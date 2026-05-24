@@ -35,7 +35,17 @@ export default function App() {
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
 
   // Query transfer states
-  const [globalSearchSeed, setGlobalSearchSeed] = useState<string>('');
+  const [searchState, setSearchState] = useState<{
+    query: string;
+    type: 'ebook' | 'audiobook';
+    results: TorrentSearchResult[];
+    searchedOnce: boolean;
+  }>({
+    query: '',
+    type: 'ebook',
+    results: [],
+    searchedOnce: false
+  });
 
   // 1. Initial mounting API loaders
   const loadLibraryData = async () => {
@@ -191,6 +201,20 @@ export default function App() {
     }
   };
 
+  // 6.b Retry/Refresh a stalled or failed torrent task
+  const handleRetryTorrentTask = async (taskId: string) => {
+    try {
+      const res = await fetch(`/api/torrents/${taskId}/retry`, {
+        method: 'POST'
+      });
+      if (res.ok) {
+        await loadTorrents();
+      }
+    } catch (err) {
+      console.error('Failed to retry torrent task', err);
+    }
+  };
+
   // 7. Add Magnet link / Send result to downloader
   const handleAddTorrentToQueue = async (torrent: TorrentSearchResult) => {
     try {
@@ -260,7 +284,7 @@ export default function App() {
   };
 
   // Count active downloads for badge notifier
-  const activeDownloadsCount = torrentTasks.filter(t => t.status === 'downloading').length;
+  const activeDownloadsCount = torrentTasks.filter(t => ['downloading', 'connecting', 'stalled'].includes(t.status)).length;
 
   return (
     <div id="bookrr-root" className={`min-h-screen bg-[#090909] text-neutral-100 flex font-sans antialiased text-base lg:pb-0 ${activeAudiobook ? 'pb-[160px]' : 'pb-[72px]'}`}>
@@ -296,6 +320,15 @@ export default function App() {
               onDeleteBook={handleDeleteBook}
               onSyncLibrary={handleScanLibrarySync}
               isSyncing={isSyncing}
+              onSearchTrackers={(query) => {
+                setSearchState({
+                    query: query,
+                    type: 'ebook',
+                    results: [],
+                    searchedOnce: false
+                });
+                setActiveTab('search');
+              }}
             />
           )}
 
@@ -303,9 +336,10 @@ export default function App() {
             <IndexerSearch
               onAddTorrent={handleAddTorrentToQueue}
               recentLogs={logs}
-              searchSeed={globalSearchSeed}
-              onClearSearchSeed={() => setGlobalSearchSeed('')}
+              searchState={searchState}
+              setSearchState={setSearchState}
               config={bookrrConfig}
+              indexers={indexers}
               setActiveTab={setActiveTab}
             />
           )}
@@ -314,12 +348,17 @@ export default function App() {
             <WebtorDownloads
               tasks={torrentTasks}
               onCancelTask={handleCancelTorrentTask}
+              onRetryTask={handleRetryTorrentTask}
               indexers={indexers}
+              books={books}
+              onReloadLibrary={loadLibraryData}
+              onReloadLogs={loadSettingsAndLogs}
             />
           )}
 
           {activeTab === 'settings' && (
             <BookrrSettings
+              books={books}
               config={bookrrConfig}
               indexers={indexers}
               logs={logs}

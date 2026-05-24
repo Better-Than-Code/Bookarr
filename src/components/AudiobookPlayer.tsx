@@ -28,6 +28,7 @@ import {
   ChevronDown
 } from 'lucide-react';
 import { Book, AudiobookChapter } from '../types';
+import { getOfflineFile } from '../services/LocalFileService';
 
 interface AudiobookPlayerProps {
   book: Book;
@@ -67,6 +68,38 @@ export default function AudiobookPlayer({ book, onClose, onUpdateProgress }: Aud
   // Vocal Boost (equalizer filter for spoken audio word focus)
   const [vocalBoost, setVocalBoost] = useState<boolean>(false);
 
+  // Local Offline Blob player setup
+  const [localBlobUrl, setLocalBlobUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    let urlToRevoke: string | null = null;
+
+    async function checkOffline() {
+      try {
+        const offline = await getOfflineFile(book.id);
+        if (offline && active) {
+          const url = URL.createObjectURL(offline.blob);
+          urlToRevoke = url;
+          setLocalBlobUrl(url);
+        } else {
+          setLocalBlobUrl(null);
+        }
+      } catch (e) {
+        console.error("LocalFile check failed in AudiobookPlayer:", e);
+      }
+    }
+
+    checkOffline();
+
+    return () => {
+      active = false;
+      if (urlToRevoke) {
+        URL.revokeObjectURL(urlToRevoke);
+      }
+    };
+  }, [book.id]);
+
   const audioRef = useRef<HTMLAudioElement>(null);
   const duration = book.duration || 3600; // Keep fallback for visual progress if needed, but audio.duration is better
   const chapters = (book.chapters as AudiobookChapter[]) || [];
@@ -100,8 +133,8 @@ export default function AudiobookPlayer({ book, onClose, onUpdateProgress }: Aud
   const activeChapterIdx = chapters.findIndex(ch => currentTime >= ch.start && currentTime < ch.end);
   const activeChapter: AudiobookChapter = (chapters[activeChapterIdx] || chapters[0] || { id: 'fallback', title: 'Introductory Section', start: 0, end: duration, fileUrl: book.fileUrl }) as AudiobookChapter;
 
-  // Current audio source - if chapter has its own file, use it, else fallback to book file
-  const currentAudioSrc = activeChapter.fileUrl || book.fileUrl;
+  // Current audio source - if chapter has its own file, use it, else fallback to browser cache or book file
+  const currentAudioSrc = activeChapter.fileUrl || localBlobUrl || book.fileUrl;
 
   // Synchronize audio element with state
   useEffect(() => {

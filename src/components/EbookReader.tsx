@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   X,
   Type,
@@ -38,10 +38,17 @@ import {
   Calendar,
   Zap,
   Library,
-  Columns
+  Columns,
+  Play,
+  Pause,
+  Square,
+  SkipForward,
+  SkipBack
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Book, EbookChapter } from '../types';
+import { getOfflineFile } from '../services/LocalFileService';
+import { ReactReader, ReactReaderStyle } from 'react-reader';
 
 interface EbookReaderProps {
   book: Book;
@@ -146,17 +153,147 @@ const THEMES: Record<ReaderTheme, any> = {
   },
 };
 
+function findElementContainingText(root: Document | HTMLElement, searchText: string): HTMLElement | null {
+  if (!searchText) return null;
+  const cleanSearch = searchText.trim().toLowerCase().replace(/\s+/g, ' ');
+  if (!cleanSearch) return null;
+
+  let bestMatch: HTMLElement | null = null;
+  let minLength = Infinity;
+
+  const elements = root.querySelectorAll('p, span, div, li, td, th, h1, h2, h3, h4, h5, h6');
+  for (let i = 0; i < elements.length; i++) {
+    const el = elements[i] as HTMLElement;
+    const text = el.innerText || el.textContent || '';
+    const cleanText = text.trim().toLowerCase().replace(/\s+/g, ' ');
+
+    if (cleanText.includes(cleanSearch)) {
+      if (cleanText.length < minLength) {
+        minLength = cleanText.length;
+        bestMatch = el;
+      }
+    }
+  }
+
+  return bestMatch;
+}
+
 export default function EbookReader({ book, onClose, onUpdateProgress }: EbookReaderProps) {
+  const [localBlobUrl, setLocalBlobUrl] = useState<string | null>(null);
+  const [localFileContent, setLocalFileContent] = useState<ArrayBuffer | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    let urlToRevoke: string | null = null;
+
+    async function checkOffline() {
+      try {
+        const offline = await getOfflineFile(book.id);
+        if (offline && active) {
+          const url = URL.createObjectURL(offline.blob);
+          const buffer = await offline.blob.arrayBuffer();
+          if (active) {
+            urlToRevoke = url;
+            setLocalBlobUrl(url);
+            setLocalFileContent(buffer);
+          }
+        }
+      } catch (e) {
+        console.error("LocalFile check failed in EbookReader:", e);
+      }
+    }
+
+    checkOffline();
+
+    return () => {
+      active = false;
+      if (urlToRevoke) {
+        URL.revokeObjectURL(urlToRevoke);
+      }
+    };
+  }, [book.id]);
+
+  const displayUrl = localBlobUrl || book.fileUrl || '';
   const chapters = (book.chapters as EbookChapter[]) || [];
-  const hasRealFile = !!book.fileUrl;
-  const isEpub = book.fileUrl?.toLowerCase().endsWith('.epub') || book.type === 'ebook';
+  const hasRealFile = !!displayUrl;
+  const isEpub = displayUrl.toLowerCase().endsWith('.epub') || book.type === 'ebook';
   
-  // If it's an EPUB but has no chapters, it's a failed extraction
-  const extractionFailed = isEpub && hasRealFile && chapters.length === 0;
+  // With react-reader, EPUBs never fail to render client-side even if backend extraction failed
+  const extractionFailed = !isEpub && hasRealFile && chapters.length === 0;
   
   // Immersive view logic: only show native view (iframe) for non-epub or if explicitly desired
-  // For EPUBs without chapters, we show an error instead of a broken iframe
   const isNativeView = hasRealFile && chapters.length === 0 && !isEpub;
+
+  // ReactReader integration states
+  const [epubLocation, setEpubLocation] = useState<string | null>(() => {
+    return localStorage.getItem(`bookrr-cfi-${book.id}`) || null;
+  });
+  const [toc, setToc] = useState<any[]>([]);
+  const [currentChapterTitle, setCurrentChapterTitle] = useState<string>(book.title);
+  const [epubProgress, setEpubProgress] = useState<number>(() => {
+    const saved = localStorage.getItem(`bookrr-progress-${book.id}`);
+    return saved ? parseInt(saved) : (book.progress || 0);
+  });
+  const renditionRef = useRef<any>(null);
+
+  // Helper to recursively find active TOC item by href
+  const findTocItemByHref = (tocList: any[], href: string): any => {
+    const targetPath = href.split('#')[0];
+    for (const item of tocList) {
+      if (item.href) {
+        const itemPath = item.href.split('#')[0];
+        if (itemPath === targetPath || targetPath.endsWith(itemPath) || itemPath.endsWith(targetPath)) {
+          return item;
+        }
+      }
+      if (item.subitems && item.subitems.length > 0) {
+        const found = findTocItemByHref(item.subitems, href);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
+
+  const navigateToHref = (href: string) => {
+    if (renditionRef.current) {
+      renditionRef.current.display(href);
+    }
+  };
+
+  const handleLocationChanged = (loc: string) => {
+    setEpubLocation(loc);
+    localStorage.setItem(`bookrr-cfi-${book.id}`, loc);
+    
+    if (renditionRef.current) {
+      const currentLocation = renditionRef.current.currentLocation();
+      if (currentLocation && currentLocation.start) {
+        const idx = currentLocation.start.index;
+        const total = renditionRef.current.book.spine.length || 1;
+        const calculatedP = Math.floor((idx / total) * 100);
+        setEpubProgress(calculatedP);
+        
+        // Save progress to local preferences and update progress
+        localStorage.setItem(`bookrr-progress-${book.id}`, calculatedP.toString());
+        localStorage.setItem(`bookrr-last-page-${book.id}`, idx.toString());
+        onUpdateProgress(book.id, idx, calculatedP);
+        
+        // Find TOC label
+        const currentHref = currentLocation.start.href;
+        if (toc && toc.length > 0) {
+          const item = findTocItemByHref(toc, currentHref);
+          if (item) {
+            setCurrentChapterTitle(item.label);
+            const tIdx = toc.findIndex(x => x.id === item.id || x.href === item.href);
+            if (tIdx !== -1) {
+              setActiveChapterIndex(tIdx);
+            }
+          }
+        } else {
+          setActiveChapterIndex(idx);
+        }
+      }
+    }
+  };
 
   // Reader core state
   const [activeChapterIndex, setActiveChapterIndex] = useState<number>(() => {
@@ -198,6 +335,463 @@ export default function EbookReader({ book, onClose, onUpdateProgress }: EbookRe
   const [settingsTab, setSettingsTab] = useState<'font' | 'layout' | 'themes'>('font');
   const [showSearch, setShowSearch] = useState(false);
 
+  // Text-to-Speech (TTS) states
+  const [isTtsActive, setIsTtsActive] = useState(false);
+  const [isTtsSpeaking, setIsTtsSpeaking] = useState(false);
+  const [isTtsPaused, setIsTtsPaused] = useState(false);
+  const [ttsRate, setTtsRate] = useState<number>(() => {
+    return parseFloat(localStorage.getItem('bookrr-pref-ttsRate') || '1.0');
+  });
+  const [selectedVoiceName, setSelectedVoiceName] = useState<string>(() => {
+    return localStorage.getItem('bookrr-pref-selectedVoice') || '';
+  });
+  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [currentSentenceIndex, setCurrentSentenceIndex] = useState(0);
+  const [ttsSentences, setTtsSentences] = useState<string[]>([]);
+  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+
+  const lastHighlightedElementRef = useRef<{
+    element: HTMLElement;
+    originalBackground: string;
+    originalColor: string;
+    originalTransition: string;
+    originalBorderRadius: string;
+    originalPadding: string;
+  } | null>(null);
+
+  const clearLastTtsHighlight = useCallback(() => {
+    if (lastHighlightedElementRef.current) {
+      const { element, originalBackground, originalColor, originalTransition, originalBorderRadius, originalPadding } = lastHighlightedElementRef.current;
+      try {
+        element.style.background = originalBackground;
+        element.style.color = originalColor;
+        element.style.transition = originalTransition;
+        element.style.borderRadius = originalBorderRadius;
+        element.style.padding = originalPadding;
+      } catch (e) {
+        console.warn("Failed to clear highlight style:", e);
+      }
+      lastHighlightedElementRef.current = null;
+    }
+  }, []);
+
+  const highlightAndScrollToText = useCallback((textToFind: string) => {
+    if (!textToFind) {
+      clearLastTtsHighlight();
+      return;
+    }
+
+    clearLastTtsHighlight();
+
+    let highlightBg = 'rgba(254, 240, 138, 0.65)';
+    let highlightText = '#171717';
+    
+    if (theme === 'sepia') {
+      highlightBg = 'rgba(217, 119, 6, 0.25)';
+      highlightText = '#433422';
+    } else if (theme === 'soft') {
+      highlightBg = 'rgba(74, 119, 74, 0.25)';
+      highlightText = '#2d3a2d';
+    } else if (theme === 'dusk') {
+      highlightBg = 'rgba(99, 102, 241, 0.35)';
+      highlightText = '#ffffff';
+    } else if (theme === 'night') {
+      highlightBg = 'rgba(255, 255, 255, 0.15)';
+      highlightText = '#f5f5f5';
+    } else if (theme === 'amoled') {
+      highlightBg = 'rgba(255, 255, 255, 0.2)';
+      highlightText = '#ffffff';
+    }
+
+    let targetElement: HTMLElement | null = null;
+
+    if (isEpub) {
+      if (renditionRef.current) {
+        try {
+          const contents = renditionRef.current.getContents();
+          if (contents && contents.length > 0) {
+            for (const content of contents) {
+              const doc = content.document;
+              if (doc) {
+                targetElement = findElementContainingText(doc, textToFind);
+                if (targetElement) break;
+              }
+            }
+          }
+        } catch (e) {
+          console.error("Error searching iframe document for TTS text:", e);
+        }
+      }
+    } else {
+      if (scrollContainerRef.current) {
+        targetElement = findElementContainingText(scrollContainerRef.current, textToFind);
+      }
+    }
+
+    if (!targetElement) return;
+
+    try {
+      const originalBackground = targetElement.style.background || '';
+      const originalColor = targetElement.style.color || '';
+      const originalTransition = targetElement.style.transition || '';
+      const originalBorderRadius = targetElement.style.borderRadius || '';
+      const originalPadding = targetElement.style.padding || '';
+
+      lastHighlightedElementRef.current = {
+        element: targetElement,
+        originalBackground,
+        originalColor,
+        originalTransition,
+        originalBorderRadius,
+        originalPadding
+      };
+
+      targetElement.style.transition = 'all 0.3s ease';
+      targetElement.style.borderRadius = '6px';
+      targetElement.style.padding = '2px 6px';
+      targetElement.style.background = highlightBg;
+      targetElement.style.color = highlightText;
+
+      targetElement.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+        inline: 'nearest'
+      });
+    } catch (e) {
+      console.error("Failed to highlight and scroll target element:", e);
+    }
+  }, [theme, isEpub, clearLastTtsHighlight]);
+
+  // Helper to score voices for high-quality natural speech synthesis
+  const getVoiceScore = useCallback((voice: SpeechSynthesisVoice): number => {
+    const name = voice.name.toLowerCase();
+    let score = 0;
+    
+    // Higher priority for English and high quality designations
+    if (voice.lang.startsWith('en')) score += 10;
+    if (voice.localService) score += 5; // Local service is often faster/more reliable
+    
+    // Natural/neural search terms get highest priority
+    if (name.includes('natural')) score += 100;
+    if (name.includes('neural')) score += 100;
+    if (name.includes('google')) score += 60; // Google high quality web voices
+    if (name.includes('siri')) score += 50;   // Siri natural voices on iOS/macOS
+    if (name.includes('premium')) score += 40;
+    if (name.includes('enhanced')) score += 40;
+    if (name.includes('wavenet')) score += 80;
+    if (name.includes('alex')) score += 45;    // Alex is excellent on macOS
+    if (name.includes('samantha')) score += 20;
+    if (name.includes('daniel')) score += 20;
+    
+    return score;
+  }, []);
+
+  // Filter & sort all available voices
+  const sortedVoices = useMemo(() => {
+    return [...availableVoices]
+      .filter(v => 
+        v.lang.startsWith('en') || 
+        v.lang.startsWith('es') || 
+        v.lang.startsWith('fr') || 
+        v.lang.startsWith('de') || 
+        v.lang.startsWith('it') || 
+        v.lang.startsWith('ja') || 
+        v.lang.startsWith('pt') ||
+        v.lang.includes('-')
+      )
+      .sort((a, b) => {
+        const scoreA = getVoiceScore(a);
+        const scoreB = getVoiceScore(b);
+        if (scoreA !== scoreB) {
+          return scoreB - scoreA;
+        }
+        return a.name.localeCompare(b.name);
+      });
+  }, [availableVoices, getVoiceScore]);
+
+  // Categorize sorted voices into Recommended (Natural/Premium/Neural) vs Standard
+  const naturalVoices = useMemo(() => {
+    return sortedVoices.filter(v => getVoiceScore(v) >= 15);
+  }, [sortedVoices, getVoiceScore]);
+
+  const standardVoices = useMemo(() => {
+    return sortedVoices.filter(v => getVoiceScore(v) < 15);
+  }, [sortedVoices, getVoiceScore]);
+
+  // Load available voices from SpeechSynthesis
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      const updateVoices = () => {
+        const voicesList = window.speechSynthesis.getVoices();
+        setAvailableVoices(voicesList);
+        
+        // Auto-select best natural voice if none selected yet
+        const saved = localStorage.getItem('bookrr-pref-selectedVoice');
+        if (!saved && voicesList.length > 0) {
+          // Sort them to find the best English/Natural voice
+          const sorted = [...voicesList].sort((a, b) => getVoiceScore(b) - getVoiceScore(a));
+          if (sorted[0]) {
+            setSelectedVoiceName(sorted[0].name);
+            localStorage.setItem('bookrr-pref-selectedVoice', sorted[0].name);
+          }
+        }
+      };
+      updateVoices();
+      window.speechSynthesis.onvoiceschanged = updateVoices;
+      return () => {
+        window.speechSynthesis.onvoiceschanged = null;
+      };
+    }
+  }, [getVoiceScore]);
+
+  const stripHtml = (htmlContent: string) => {
+    if (typeof document !== 'undefined') {
+      const doc = new DOMParser().parseFromString(htmlContent, 'text/html');
+      return doc.body.textContent || '';
+    }
+    return htmlContent.replace(/<[^>]*>/g, '');
+  };
+
+  const getEpubText = (): string => {
+    if (renditionRef.current) {
+      try {
+        const contents = renditionRef.current.getContents();
+        if (contents && contents.length > 0) {
+          return contents.map((c: any) => c.document?.body?.innerText || '').join('\n');
+        }
+      } catch (e) {
+        console.error("Failed to extract Epub text content:", e);
+      }
+    }
+    return '';
+  };
+
+  const prepareTtsText = () => {
+    let rawText = '';
+    if (isEpub) {
+      rawText = getEpubText();
+      if (!rawText) {
+        rawText = currentChapterTitle || book.title;
+      }
+    } else {
+      rawText = stripHtml(currentChapter.content);
+    }
+
+    // Sanitize and replace abbreviations to prevent false sentence termination and sound more natural
+    const sanitizeText = (text: string): string => {
+      return text
+        .replace(/\bMr\./gi, 'Mister')
+        .replace(/\bMrs\./gi, 'Missus')
+        .replace(/\bMs\./gi, 'Miss')
+        .replace(/\bDr\./gi, 'Doctor')
+        .replace(/\bProf\./gi, 'Professor')
+        .replace(/\bSt\./gi, 'Saint')
+        .replace(/\be\.g\./gi, 'for example')
+        .replace(/\bi\.e\./gi, 'that is')
+        .replace(/\bvs\./gi, 'versus')
+        .replace(/\bco\./gi, 'company')
+        .replace(/\betc\./gi, 'etcetera')
+        .replace(/\bhwy\./gi, 'highway')
+        .replace(/\bRd\./gi, 'Road')
+        .replace(/\bSt\.\b/gi, 'Street')
+        .replace(/\bAve\./gi, 'Avenue')
+        .replace(/\bJan\./gi, 'January')
+        .replace(/\bFeb\./gi, 'February')
+        .replace(/\bMar\./gi, 'March')
+        .replace(/\bApr\./gi, 'April')
+        .replace(/\bJun\./gi, 'June')
+        .replace(/\bJul\./gi, 'July')
+        .replace(/\bAug\./gi, 'August')
+        .replace(/\bSep\./gi, 'September')
+        .replace(/\bOct\./gi, 'October')
+        .replace(/\bNov\./gi, 'November')
+        .replace(/\bDec\./gi, 'December');
+    };
+
+    // Split into paragraphs post-sanitizing
+    const paragraphs = rawText
+      .split(/\n+/)
+      .map(p => p.trim())
+      .filter(p => p.length > 0);
+
+    const sentences: string[] = [];
+    paragraphs.forEach(p => {
+      // Apply abbreviation sanitization on the paragraph
+      const sanitizedParagraph = sanitizeText(p);
+
+      // Split sentences using regex or simple match
+      const m = sanitizedParagraph.match(/[^.!?]+[.!?]+(\s+|$)/g);
+      if (m) {
+        m.forEach(match => {
+          const clean = match.trim();
+          if (clean.length > 1) {
+            sentences.push(clean);
+          }
+        });
+      } else if (sanitizedParagraph.trim().length > 1) {
+        sentences.push(sanitizedParagraph.trim());
+      }
+    });
+
+    return sentences;
+  };
+
+  const stopTts = () => {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+    clearLastTtsHighlight();
+    setIsTtsSpeaking(false);
+    setIsTtsPaused(false);
+    utteranceRef.current = null;
+  };
+
+  // Clean stop on unmount
+  useEffect(() => {
+    return () => {
+      stopTts();
+    };
+  }, []);
+
+  // When chapter/location changes, reset and stop TTS
+  useEffect(() => {
+    stopTts();
+    setCurrentSentenceIndex(0);
+    setTtsSentences([]);
+  }, [activeChapterIndex, epubLocation]);
+
+  const startSpeakingFromIndex = (index: number, sentencesList: string[]) => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+
+    window.speechSynthesis.cancel();
+
+    if (index >= sentencesList.length) {
+      stopTts();
+      // Auto advance to next chapter if possible
+      if (activeChapterIndex < totalChapters - 1) {
+        handleNext();
+      }
+      return;
+    }
+
+    const textToSpeak = sentencesList[index];
+    if (!textToSpeak) return;
+
+    // Locate, highlight, and auto-scroll target element to the viewport center
+    highlightAndScrollToText(textToSpeak);
+
+    const utterance = new SpeechSynthesisUtterance(textToSpeak);
+    utteranceRef.current = utterance;
+
+    // Apply voice if selected
+    if (selectedVoiceName) {
+      const voice = availableVoices.find(v => v.name === selectedVoiceName);
+      if (voice) {
+        utterance.voice = voice;
+      }
+    }
+
+    // Apply speed rate configuration
+    utterance.rate = ttsRate;
+
+    utterance.onend = () => {
+      const nextIndex = index + 1;
+      setCurrentSentenceIndex(nextIndex);
+      startSpeakingFromIndex(nextIndex, sentencesList);
+    };
+
+    utterance.onerror = (e) => {
+      console.error("Speech Synthesis Utterance error:", e);
+      if (e.error !== 'interrupted') {
+        const nextIndex = index + 1;
+        setCurrentSentenceIndex(nextIndex);
+        startSpeakingFromIndex(nextIndex, sentencesList);
+      }
+    };
+
+    setIsTtsSpeaking(true);
+    setIsTtsPaused(false);
+    window.speechSynthesis.speak(utterance);
+  };
+
+  // Dynamic recalculation of highlight styles on theme / sentences changes
+  useEffect(() => {
+    if (isTtsSpeaking && ttsSentences.length > 0 && currentSentenceIndex < ttsSentences.length) {
+      highlightAndScrollToText(ttsSentences[currentSentenceIndex]);
+    }
+  }, [theme, currentSentenceIndex, ttsSentences, highlightAndScrollToText, isTtsSpeaking]);
+
+  const handleTtsPlayPause = () => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+
+    if (isTtsSpeaking) {
+      if (isTtsPaused) {
+        window.speechSynthesis.resume();
+        setIsTtsPaused(false);
+      } else {
+        window.speechSynthesis.pause();
+        setIsTtsPaused(true);
+      }
+    } else {
+      let currentList = ttsSentences;
+      if (currentList.length === 0) {
+        currentList = prepareTtsText();
+        setTtsSentences(currentList);
+      }
+
+      if (currentList.length > 0) {
+        const startIdx = currentSentenceIndex < currentList.length ? currentSentenceIndex : 0;
+        setCurrentSentenceIndex(startIdx);
+        startSpeakingFromIndex(startIdx, currentList);
+      } else {
+        const msg = isEpub ? "Reading epub source text..." : "Reading chapter content...";
+        startSpeakingFromIndex(0, [msg]);
+      }
+    }
+  };
+
+  const handleRateChange = (newRate: number) => {
+    setTtsRate(newRate);
+    localStorage.setItem('bookrr-pref-ttsRate', newRate.toString());
+    
+    if (isTtsSpeaking) {
+      const currentList = ttsSentences.length > 0 ? ttsSentences : prepareTtsText();
+      startSpeakingFromIndex(currentSentenceIndex, currentList);
+    }
+  };
+
+  const handleVoiceChange = (voiceName: string) => {
+    setSelectedVoiceName(voiceName);
+    localStorage.setItem('bookrr-pref-selectedVoice', voiceName);
+    
+    if (isTtsSpeaking) {
+      const currentList = ttsSentences.length > 0 ? ttsSentences : prepareTtsText();
+      startSpeakingFromIndex(currentSentenceIndex, currentList);
+    }
+  };
+
+  const handlePrevSentence = () => {
+    if (currentSentenceIndex > 0) {
+      const prevIdx = currentSentenceIndex - 1;
+      setCurrentSentenceIndex(prevIdx);
+      if (isTtsSpeaking) {
+        const currentList = ttsSentences.length > 0 ? ttsSentences : prepareTtsText();
+        startSpeakingFromIndex(prevIdx, currentList);
+      }
+    }
+  };
+
+  const handleNextSentence = () => {
+    const currentList = ttsSentences.length > 0 ? ttsSentences : prepareTtsText();
+    if (currentSentenceIndex < currentList.length - 1) {
+      const nextIdx = currentSentenceIndex + 1;
+      setCurrentSentenceIndex(nextIdx);
+      if (isTtsSpeaking) {
+        startSpeakingFromIndex(nextIdx, currentList);
+      }
+    }
+  };
+
   // Reading Stats
   const [readingStats, setReadingStats] = useState(() => {
     const saved = localStorage.getItem(`bookrr-stats-${book.id}`);
@@ -230,11 +824,132 @@ export default function EbookReader({ book, onClose, onUpdateProgress }: EbookRe
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const activeStyle = THEMES[theme];
 
+  const customReaderStyles = useMemo(() => {
+    let bgHex = '#ffffff';
+    let textHex = '#171717';
+    
+    if (theme === 'light') { bgHex = '#ffffff'; textHex = '#171717'; }
+    else if (theme === 'sepia') { bgHex = '#f4ecd8'; textHex = '#433422'; }
+    else if (theme === 'soft') { bgHex = '#e3f0e3'; textHex = '#2d3a2d'; }
+    else if (theme === 'dusk') { bgHex = '#2b2d42'; textHex = '#d4d4d4'; }
+    else if (theme === 'night') { bgHex = '#121212'; textHex = '#a3a3a3'; }
+    else if (theme === 'amoled') { bgHex = '#000000'; textHex = '#737373'; }
+
+    return {
+      ...ReactReaderStyle,
+      container: {
+        ...ReactReaderStyle.container,
+        backgroundColor: bgHex,
+        transition: 'background-color 0.3s ease',
+      },
+      readerArea: {
+        ...ReactReaderStyle.readerArea,
+        backgroundColor: bgHex,
+        transition: 'background-color 0.3s ease',
+      },
+      reader: {
+        ...ReactReaderStyle.reader,
+        backgroundColor: bgHex,
+        boxShadow: 'none',
+      },
+      loadingView: {
+        ...ReactReaderStyle.loadingView,
+        backgroundColor: bgHex,
+        color: textHex,
+        fontSize: '15px',
+        fontFamily: 'serif',
+        fontStyle: 'italic',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      },
+      arrow: {
+        ...ReactReaderStyle.arrow,
+        color: textHex,
+        background: 'none',
+        opacity: 0.35,
+        fontSize: '2.5rem',
+        padding: '0 15px',
+        transition: 'all 0.2s ease',
+      },
+      arrowHover: {
+        ...ReactReaderStyle.arrowHover,
+        color: textHex,
+        opacity: 0.9,
+        transform: 'scale(1.15)',
+      },
+    };
+  }, [theme]);
+
+  const applyThemeToRendition = () => {
+    const rendition = renditionRef.current;
+    if (!rendition) return;
+
+    const fontName = fontFamily === 'sans' ? 'sans-serif' : fontFamily === 'serif' ? 'serif' : fontFamily === 'mono' ? 'monospace' : 'Atkinson Hyperlegible';
+    
+    let bgHex = '#ffffff';
+    let textHex = '#171717';
+    
+    if (theme === 'light') { bgHex = '#ffffff'; textHex = '#171717'; }
+    else if (theme === 'sepia') { bgHex = '#f4ecd8'; textHex = '#433422'; }
+    else if (theme === 'soft') { bgHex = '#e3f0e3'; textHex = '#2d3a2d'; }
+    else if (theme === 'dusk') { bgHex = '#2b2d42'; textHex = '#d4d4d4'; }
+    else if (theme === 'night') { bgHex = '#121212'; textHex = '#a3a3a3'; }
+    else if (theme === 'amoled') { bgHex = '#000000'; textHex = '#737373'; }
+
+    rendition.getContents().forEach((content: any) => {
+      content.addStylesheet('https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible&display=swap');
+      
+      let padX = '40px';
+      if (margins === 'narrow') padX = '16px';
+      else if (margins === 'wide') padX = '80px';
+      
+      // If template contains horizontal flow (paged mode), reduce body margins to prevent multi-column cutoff
+      if (isPagedMode) {
+        padX = '28px';
+      }
+      
+      content.addStylesheetRules({
+        'body': {
+          'padding-left': `${padX} !important`,
+          'padding-right': `${padX} !important`,
+          'font-family': `${fontName} !important`,
+          'background-color': `${bgHex} !important`,
+          'color': `${textHex} !important`
+        },
+        'p, span, div, h1, h2, h3, h4, h5, h6, table, tr, td, ul, li': {
+          'font-family': `${fontName} !important`,
+          'color': `${textHex} !important`
+        }
+      });
+    });
+
+    rendition.themes.register(theme, {
+      body: {
+        background: bgHex,
+        color: textHex,
+        'font-family': fontName,
+        'line-height': lineSpacing === 'compact' ? '1.4' : lineSpacing === 'comfort' ? '1.8' : '2.2',
+        'text-align': textAlign === 'left' ? 'left' : 'justify'
+      },
+      p: {
+        'font-family': fontName,
+        'line-height': lineSpacing === 'compact' ? '1.4' : lineSpacing === 'comfort' ? '1.8' : '2.2',
+        'text-align': textAlign === 'left' ? 'left' : 'justify'
+      }
+    });
+    
+    rendition.themes.select(theme);
+    rendition.themes.fontSize(`${fontSize}px`);
+  };
+
+  useEffect(() => {
+    applyThemeToRendition();
+  }, [theme, fontSize, fontFamily, lineSpacing, margins, textAlign, epubLocation]);
+
   const handleRetryExtraction = async () => {
     setIsProcessing(true);
     try {
-      // In a real app, this would call a server endpoint to re-trigger EPUB parsing
-      // For now we just simulate it with a refresh request
       const res = await fetch(`/api/books/${book.id}/process`, { method: 'POST' });
       if (res.ok) {
         window.location.reload();
@@ -247,8 +962,11 @@ export default function EbookReader({ book, onClose, onUpdateProgress }: EbookRe
   };
 
   // Calculated Progress
-  const computedProgress = chapters.length > 0 ? Math.floor(((activeChapterIndex + 1) / chapters.length) * 100) : 0;
-  const totalChapters = chapters.length || 1;
+  const computedProgress = isEpub 
+    ? epubProgress 
+    : (chapters.length > 0 ? Math.floor(((activeChapterIndex + 1) / chapters.length) * 100) : 0);
+    
+  const totalChapters = isEpub ? (toc.length || 1) : (chapters.length || 1);
 
   // Persistence & Initialization
   useEffect(() => {
@@ -261,24 +979,36 @@ export default function EbookReader({ book, onClose, onUpdateProgress }: EbookRe
 
   // Sync scroll on chapter change
   useEffect(() => {
-    if (scrollContainerRef.current) {
+    if (!isEpub && scrollContainerRef.current) {
       scrollContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
     }
-  }, [activeChapterIndex]);
+  }, [activeChapterIndex, isEpub]);
 
   const handleNext = () => {
-    if (activeChapterIndex < chapters.length - 1) {
-      const next = activeChapterIndex + 1;
-      setActiveChapterIndex(next);
-      onUpdateProgress(book.id, next, Math.floor(((next + 1) / chapters.length) * 100));
+    if (isEpub) {
+      if (renditionRef.current) {
+        renditionRef.current.next();
+      }
+    } else {
+      if (activeChapterIndex < chapters.length - 1) {
+        const next = activeChapterIndex + 1;
+        setActiveChapterIndex(next);
+        onUpdateProgress(book.id, next, Math.floor(((next + 1) / chapters.length) * 100));
+      }
     }
   };
 
   const handlePrev = () => {
-    if (activeChapterIndex > 0) {
-      const prev = activeChapterIndex - 1;
-      setActiveChapterIndex(prev);
-      onUpdateProgress(book.id, prev, Math.floor(((prev + 1) / chapters.length) * 100));
+    if (isEpub) {
+      if (renditionRef.current) {
+        renditionRef.current.prev();
+      }
+    } else {
+      if (activeChapterIndex > 0) {
+        const prev = activeChapterIndex - 1;
+        setActiveChapterIndex(prev);
+        onUpdateProgress(book.id, prev, Math.floor(((prev + 1) / chapters.length) * 100));
+      }
     }
   };
 
@@ -291,7 +1021,7 @@ export default function EbookReader({ book, onClose, onUpdateProgress }: EbookRe
       updated = [...bookmarks, {
         id: `bm-${Date.now()}`,
         chapterIndex: activeChapterIndex,
-        label: currentChapter.title,
+        label: isEpub ? currentChapterTitle : (currentChapter.title || 'Untitled Segment'),
         createdAt: new Date().toISOString()
       }];
     }
@@ -345,6 +1075,35 @@ export default function EbookReader({ book, onClose, onUpdateProgress }: EbookRe
     loose: 'leading-[2.5]'
   };
 
+  const renderTocList = (items: any[], depth = 0): React.ReactNode => {
+    return items.map((ch, idx) => {
+      const isSelected = currentChapterTitle === ch.label || (renditionRef.current && renditionRef.current.currentLocation()?.start?.href?.split('#')[0] === ch.href?.split('#')[0]);
+      
+      return (
+        <div key={ch.id || `${ch.href}-${idx}`} className="w-full flex flex-col">
+          <button
+            onClick={() => {
+              navigateToHref(ch.href);
+              setShowMenu(false);
+            }}
+            style={{ paddingLeft: `${Math.max(12, depth * 16)}px` }}
+            className={`w-full text-left p-2 rounded-xl flex items-center justify-between transition-all ${isSelected ? 'bg-amber-500/10 text-amber-600 ring-1 ring-amber-500/20' : 'hover:bg-black/5 dark:hover:bg-white/5'}`}
+          >
+            <div className="flex items-center gap-3 truncate">
+              {depth === 0 && (
+                <span className={`w-5 h-5 shrink-0 flex items-center justify-center text-[9px] font-mono rounded-lg border ${isSelected ? 'border-amber-500/50 bg-amber-500/10' : 'border-neutral-500/20 opacity-50'}`}>
+                  {idx + 1}
+                </span>
+              )}
+              <span className={`text-xs tracking-tight truncate ${isSelected ? 'font-bold font-serif' : 'font-medium opacity-80'}`}>{ch.label}</span>
+            </div>
+          </button>
+          {ch.subitems && ch.subitems.length > 0 && renderTocList(ch.subitems, depth + 1)}
+        </div>
+      );
+    });
+  };
+
   return (
     <div className={`fixed inset-0 z-[100] flex flex-col overflow-hidden ${activeStyle.bg} ${activeStyle.text} transition-colors duration-500 font-sans`}>
       
@@ -366,7 +1125,7 @@ export default function EbookReader({ book, onClose, onUpdateProgress }: EbookRe
               </button>
               <div className="flex flex-col truncate max-w-[150px] sm:max-w-[300px]">
                 <h1 className="text-sm font-semibold truncate leading-tight">{book.title}</h1>
-                <p className={`text-[10px] ${activeStyle.sub} italic truncate`}>{currentChapter.title}</p>
+                <p className={`text-[10px] ${activeStyle.sub} italic truncate`}>{isEpub ? currentChapterTitle : currentChapter.title}</p>
               </div>
             </div>
 
@@ -376,6 +1135,21 @@ export default function EbookReader({ book, onClose, onUpdateProgress }: EbookRe
               </button>
               <button onClick={toggleBookmark} className={`p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-full transition-colors ${isBookmarked ? 'text-amber-500' : ''}`}>
                 <Bookmark size={18} fill={isBookmarked ? 'currentColor' : 'none'} />
+              </button>
+              <button 
+                onClick={() => {
+                  if (isTtsActive) {
+                    stopTts();
+                  }
+                  setIsTtsActive(!isTtsActive);
+                }} 
+                className={`p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-full transition-colors relative ${isTtsActive ? 'text-amber-600 bg-amber-500/10' : ''}`}
+                title="Read Aloud (TTS)"
+              >
+                <Volume2 size={18} />
+                {isTtsSpeaking && !isTtsPaused && (
+                  <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                )}
               </button>
               <button onClick={() => setShowSettings(!showSettings)} className={`p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-full transition-colors ${showSettings ? 'bg-black/5 dark:bg-white/5' : ''}`}>
                 <Settings size={18} />
@@ -391,11 +1165,53 @@ export default function EbookReader({ book, onClose, onUpdateProgress }: EbookRe
       {/* 2. Main Reading Surface */}
       <div 
         ref={scrollContainerRef}
-        onClick={() => setImmersiveMode(!immersiveMode)}
-        className={`flex-1 overflow-y-auto ${(isNativeView || extractionFailed) ? 'overflow-hidden' : ''} h-full custom-scrollbar`}
+        onClick={() => !isEpub && setImmersiveMode(!immersiveMode)}
+        className={`flex-1 ${isEpub || isNativeView || extractionFailed ? 'overflow-hidden' : 'overflow-y-auto'} h-full custom-scrollbar`}
       >
-        <div className={`mx-auto max-w-5xl h-full flex flex-col pt-20 pb-32 ${marginStyles[margins]}`}>
-          {extractionFailed ? (
+        {isEpub ? (
+          <div className={`w-full h-full transition-all duration-300 ${immersiveMode ? 'pt-2 pb-2' : 'pt-14 pb-16'} relative ${activeStyle.bg}`} style={{ height: '100vh' }}>
+            <ReactReader
+              url={localFileContent || displayUrl}
+              title={book.title}
+              location={epubLocation}
+              locationChanged={handleLocationChanged}
+              showToc={false}
+              readerStyles={customReaderStyles}
+              epubOptions={{
+                flow: isPagedMode ? 'paginated' : 'scrolled',
+                width: '100%',
+                height: '100%',
+              }}
+              getRendition={(rendition) => {
+                renditionRef.current = rendition;
+                
+                // Fetch Table of Contents once loaded natively from the EPUB
+                rendition.book.loaded.navigation.then((nav: any) => {
+                  if (nav && nav.toc) {
+                    setToc(nav.toc);
+                  }
+                });
+                
+                // Bind touch/mouse click to toggle controls HUD
+                rendition.on('click', () => {
+                  setImmersiveMode(prev => !prev);
+                });
+
+                // Dynamically re-apply theme on section load to prevent flashes
+                rendition.on('rendered', () => {
+                  applyThemeToRendition();
+                });
+                rendition.on('relocated', () => {
+                  applyThemeToRendition();
+                });
+                
+                applyThemeToRendition();
+              }}
+            />
+          </div>
+        ) : (
+          <div className={`mx-auto max-w-5xl h-full flex flex-col pt-20 pb-32 ${marginStyles[margins]}`}>
+            {extractionFailed ? (
             <div className="flex-1 flex items-center justify-center p-6">
               <motion.div 
                 initial={{ opacity: 0, scale: 0.95 }}
@@ -426,7 +1242,7 @@ export default function EbookReader({ book, onClose, onUpdateProgress }: EbookRe
                     {isProcessing ? 'Processing...' : 'Retry Deep Extraction'}
                   </button>
                   <a 
-                    href={book.fileUrl} 
+                    href={displayUrl} 
                     download 
                     onClick={(e) => e.stopPropagation()}
                     className={`w-full py-3 rounded-xl border ${activeStyle.border} font-bold text-sm flex items-center justify-center gap-2 hover:bg-black/5 dark:hover:bg-white/5 transition-colors`}
@@ -449,7 +1265,7 @@ export default function EbookReader({ book, onClose, onUpdateProgress }: EbookRe
                 NATIVE SOURCE VIEW ACTIVE
               </div>
               <iframe 
-                src={book.fileUrl} 
+                src={displayUrl} 
                 className="w-full h-full border-none flex-1"
                 title={book.title}
               />
@@ -507,6 +1323,7 @@ export default function EbookReader({ book, onClose, onUpdateProgress }: EbookRe
             </motion.article>
           )}
         </div>
+      )}
       </div>
 
       {/* 3. Footer Control Bar (MoonReader style progress) */}
@@ -579,6 +1396,17 @@ export default function EbookReader({ book, onClose, onUpdateProgress }: EbookRe
                   <span>STYLE</span>
                 </button>
                 <button 
+                  onClick={(e) => { 
+                    e.stopPropagation(); 
+                    if (isTtsActive) stopTts();
+                    setIsTtsActive(!isTtsActive); 
+                  }}
+                  className={`flex flex-col items-center gap-0.5 transition-opacity ${isTtsActive ? 'text-amber-600 opacity-100' : 'opacity-70 hover:opacity-100'}`}
+                >
+                  <Volume2 size={18} />
+                  <span>{isTtsSpeaking && !isTtsPaused ? 'SPEAKING' : 'READ ALOUD'}</span>
+                </button>
+                <button 
                   onClick={(e) => { e.stopPropagation(); setIsPagedMode(!isPagedMode); }}
                   className={`flex flex-col items-center gap-0.5 transition-opacity ${isPagedMode ? 'text-amber-600 opacity-100' : 'opacity-70 hover:opacity-100'}`}
                 >
@@ -610,6 +1438,158 @@ export default function EbookReader({ book, onClose, onUpdateProgress }: EbookRe
               </div>
             </div>
           </motion.footer>
+        )}
+      </AnimatePresence>
+
+      {/* Text-to-Speech (TTS) Control Panel */}
+      <AnimatePresence>
+        {isTtsActive && (
+          <motion.div 
+            initial={{ opacity: 0, y: 50, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 50, scale: 0.95 }}
+            className={`fixed bottom-20 left-4 right-4 sm:left-auto sm:right-6 sm:w-96 p-5 rounded-2xl border ${activeStyle.border} ${activeStyle.panel} shadow-2xl z-[80] flex flex-col gap-4`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header row */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Volume2 size={16} className={activeStyle.accentText} />
+                <span className="font-bold text-xs tracking-wider uppercase font-mono">Read Aloud</span>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                {isTtsSpeaking && !isTtsPaused && (
+                  <div className="flex items-end gap-0.5 h-3 px-1.5 py-0.5 rounded bg-emerald-500/10">
+                    <span className="w-0.5 h-2 bg-emerald-500 rounded-full animate-pulse" />
+                    <span className="w-0.5 h-3 bg-emerald-500 rounded-full animate-pulse" style={{ animationDelay: '0.15s' }} />
+                    <span className="w-0.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" style={{ animationDelay: '0.3s' }} />
+                  </div>
+                )}
+                
+                <button 
+                  onClick={() => { stopTts(); setIsTtsActive(false); }}
+                  className={`p-1 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 opacity-50 hover:opacity-100 transition-all`}
+                  title="Close Speech Panel"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            </div>
+
+            {/* Speaking Sentence Preview */}
+            <div className={`p-3.5 rounded-xl ${theme === 'amoled' ? 'bg-neutral-900/40' : 'bg-black/5 dark:bg-white/5'} text-xs italic ${activeStyle.sub} min-h-[64px] flex items-center justify-center text-center leading-relaxed transition-colors duration-300`}>
+              {ttsSentences.length > 0 
+                ? (ttsSentences[currentSentenceIndex] || "End of chapter content reached.") 
+                : "Press Play to begin reading content of this chapter aloud."}
+            </div>
+
+            {/* Audio Sentence Index Indicator */}
+            {ttsSentences.length > 0 && (
+              <div className="flex items-center justify-between text-[10px] font-mono opacity-50 px-1 -mt-1">
+                <span>SENTENCE</span>
+                <span>{currentSentenceIndex + 1} / {ttsSentences.length}</span>
+              </div>
+            )}
+
+            {/* Playback Controls Row */}
+            <div className="flex items-center justify-center gap-5 my-1">
+              <button
+                disabled={currentSentenceIndex === 0 || ttsSentences.length === 0}
+                onClick={handlePrevSentence}
+                className={`p-2 rounded-xl border ${activeStyle.border} hover:bg-black/5 dark:hover:bg-white/5 transition-all disabled:opacity-30 disabled:hover:bg-transparent`}
+                title="Previous Sentence"
+              >
+                <SkipBack size={16} />
+              </button>
+
+              <button
+                onClick={handleTtsPlayPause}
+                className={`w-12 h-12 rounded-full ${activeStyle.accent} text-white hover:opacity-90 active:scale-95 flex items-center justify-center shadow-lg transition-all`}
+                title={isTtsSpeaking && !isTtsPaused ? "Pause" : "Play"}
+              >
+                {isTtsSpeaking && !isTtsPaused ? (
+                  <Pause size={18} fill="currentColor" />
+                ) : (
+                  <Play size={18} fill="currentColor" className="ml-0.5" />
+                )}
+              </button>
+
+              <button
+                onClick={stopTts}
+                disabled={!isTtsSpeaking}
+                className={`p-2 rounded-xl border ${activeStyle.border} hover:bg-black/5 dark:hover:bg-white/5 transition-all disabled:opacity-30 disabled:hover:bg-transparent`}
+                title="Stop Speech"
+              >
+                <Square size={16} fill="currentColor" />
+              </button>
+
+              <button
+                disabled={ttsSentences.length === 0 || currentSentenceIndex === ttsSentences.length - 1}
+                onClick={handleNextSentence}
+                className={`p-2 rounded-xl border ${activeStyle.border} hover:bg-black/5 dark:hover:bg-white/5 transition-all disabled:opacity-30 disabled:hover:bg-transparent`}
+                title="Next Sentence"
+              >
+                <SkipForward size={16} />
+              </button>
+            </div>
+
+            {/* Speed Rate Slider */}
+            <div className="flex flex-col gap-1 px-1">
+              <div className="flex items-center justify-between text-[10px] font-mono opacity-50 uppercase tracking-wider">
+                <span>SPEECH SPEED</span>
+                <span>{ttsRate.toFixed(2)}x</span>
+              </div>
+              <div className="flex gap-1.5 mt-1">
+                {[0.5, 0.75, 1.0, 1.25, 1.5, 2.0].map((rate) => (
+                  <button
+                    key={rate}
+                    onClick={() => handleRateChange(rate)}
+                    className={`flex-1 py-1 rounded-lg text-[10px] font-mono font-bold transition-all ${ttsRate === rate ? 'bg-amber-600 text-white' : 'bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10'}`}
+                  >
+                    {rate}x
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Voices Dropdown */}
+            {sortedVoices.length > 0 && (
+              <div className="flex flex-col gap-1.5 px-1">
+                <span className="text-[10px] font-mono opacity-50 uppercase tracking-wider">SPEECH VOICE</span>
+                <select
+                  value={selectedVoiceName}
+                  onChange={(e) => handleVoiceChange(e.target.value)}
+                  className={`w-full text-xs p-2.5 rounded-xl bg-transparent border ${activeStyle.border} focus:outline-none focus:ring-1 focus:ring-amber-500 font-sans cursor-pointer transition-all ${theme === 'amoled' ? 'bg-neutral-900/60' : 'bg-black/5 dark:bg-white/5'}`}
+                >
+                  <option value="" className="text-black bg-white">Default System Voice</option>
+                  
+                  {naturalVoices.length > 0 && (
+                    <optgroup label="✨ Recommended Natural Voices" className="text-amber-700 bg-white font-semibold">
+                      {naturalVoices.map((voice) => (
+                        <option key={voice.name} value={voice.name} className="text-neutral-800 bg-white font-normal">
+                          🌟 {voice.name} ({voice.lang.split('-')[0].toUpperCase()})
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+
+                  {standardVoices.length > 0 && (
+                    <optgroup label="Standard System Voices" className="text-neutral-500 bg-white">
+                      {standardVoices.map((voice) => (
+                        <option key={voice.name} value={voice.name} className="text-neutral-800 bg-white font-normal">
+                          {voice.name} ({voice.lang.split('-')[0].toUpperCase()})
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                </select>
+                <span className="text-[9px] opacity-40 font-mono -mt-1 block pl-0.5 leading-snug">
+                  Superior voices are highlighted with stars. Playback is automatically fine-tuned for professional listening.
+                </span>
+              </div>
+            )}
+          </motion.div>
         )}
       </AnimatePresence>
 
@@ -655,33 +1635,41 @@ export default function EbookReader({ book, onClose, onUpdateProgress }: EbookRe
               <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
                 {activeTab === 'contents' && (
                   <div className="space-y-1">
-                    {chapters.map((ch, idx) => {
-                      const wordCount = ch.content.split(/\s+/).length;
-                      const readingTime = Math.max(1, Math.ceil(wordCount / 225));
-                      
-                      return (
-                        <button
-                          key={ch.id}
-                          onClick={() => {
-                            setActiveChapterIndex(idx);
-                            setShowMenu(false);
-                            onUpdateProgress(book.id, idx, Math.floor(((idx + 1) / chapters.length) * 100));
-                          }}
-                          className={`w-full text-left p-3 rounded-xl flex items-center justify-between transition-all ${activeChapterIndex === idx ? 'bg-amber-500/10 text-amber-600 ring-1 ring-amber-500/20' : 'hover:bg-black/5 dark:hover:bg-white/5'}`}
-                        >
-                          <div className="flex items-center gap-3 truncate">
-                            <span className={`w-6 h-6 shrink-0 flex items-center justify-center text-[10px] font-mono rounded-lg border ${activeChapterIndex === idx ? 'border-amber-500/50 bg-amber-500/10' : 'border-neutral-500/20 opacity-50'}`}>
-                              {idx + 1}
-                            </span>
-                            <span className={`text-sm tracking-tight truncate ${activeChapterIndex === idx ? 'font-bold' : 'font-medium opacity-80'}`}>{ch.title}</span>
-                          </div>
-                          <div className={`text-[10px] font-mono shrink-0 opacity-40 flex items-center gap-1`}>
-                            <Clock size={10} />
-                            {readingTime}m
-                          </div>
-                        </button>
-                      );
-                    })}
+                    {isEpub ? (
+                      toc.length === 0 ? (
+                        <div className="py-20 text-center opacity-30 text-xs italic">Loading chapters from EPUB...</div>
+                      ) : (
+                        renderTocList(toc)
+                      )
+                    ) : (
+                      chapters.map((ch, idx) => {
+                        const wordCount = ch.content.split(/\s+/).length;
+                        const readingTime = Math.max(1, Math.ceil(wordCount / 225));
+                        
+                        return (
+                          <button
+                            key={ch.id}
+                            onClick={() => {
+                              setActiveChapterIndex(idx);
+                              setShowMenu(false);
+                              onUpdateProgress(book.id, idx, Math.floor(((idx + 1) / chapters.length) * 100));
+                            }}
+                            className={`w-full text-left p-3 rounded-xl flex items-center justify-between transition-all ${activeChapterIndex === idx ? 'bg-amber-500/10 text-amber-600 ring-1 ring-amber-500/20' : 'hover:bg-black/5 dark:hover:bg-white/5'}`}
+                          >
+                            <div className="flex items-center gap-3 truncate">
+                              <span className={`w-6 h-6 shrink-0 flex items-center justify-center text-[10px] font-mono rounded-lg border ${activeChapterIndex === idx ? 'border-amber-500/50 bg-amber-500/10' : 'border-neutral-500/20 opacity-50'}`}>
+                                {idx + 1}
+                              </span>
+                              <span className={`text-sm tracking-tight truncate ${activeChapterIndex === idx ? 'font-bold' : 'font-medium opacity-80'}`}>{ch.title}</span>
+                            </div>
+                            <div className={`text-[10px] font-mono shrink-0 opacity-40 flex items-center gap-1`}>
+                              <Clock size={10} />
+                              {readingTime}m
+                            </div>
+                          </button>
+                        );
+                      })
+                    )}
                   </div>
                 )}
                 {activeTab === 'highlights' && (
@@ -714,10 +1702,19 @@ export default function EbookReader({ book, onClose, onUpdateProgress }: EbookRe
                           <div className="flex justify-between items-center pt-1 border-t border-neutral-500/5">
                             <span className="text-[9px] opacity-40">{new Date(hl.createdAt).toLocaleDateString()}</span>
                             <button 
-                              onClick={() => { setActiveChapterIndex(hl.chapterIndex); setShowMenu(false); }}
+                              onClick={() => { 
+                                if (isEpub) {
+                                  if (toc[hl.chapterIndex]) {
+                                    navigateToHref(toc[hl.chapterIndex].href);
+                                  }
+                                } else {
+                                  setActiveChapterIndex(hl.chapterIndex);
+                                }
+                                setShowMenu(false); 
+                              }}
                               className="text-[9px] font-bold text-amber-600 hover:underline"
                             >
-                              JUMP TO Chapter
+                              JUMP TO Location
                             </button>
                           </div>
                         </div>
@@ -744,10 +1741,19 @@ export default function EbookReader({ book, onClose, onUpdateProgress }: EbookRe
                           </div>
                           <div className="flex items-center gap-2">
                              <button
-                                onClick={() => { setActiveChapterIndex(bm.chapterIndex); setShowMenu(false); }}
+                                onClick={() => {
+                                  if (isEpub) {
+                                    if (toc[bm.chapterIndex]) {
+                                      navigateToHref(toc[bm.chapterIndex].href);
+                                    }
+                                  } else {
+                                    setActiveChapterIndex(bm.chapterIndex);
+                                  }
+                                  setShowMenu(false);
+                                }}
                                 className="text-[10px] font-bold text-amber-600 bg-amber-500/10 px-2 py-0.5 rounded"
                              >
-                               GO TO Ch {bm.chapterIndex + 1}
+                               GO TO Location
                              </button>
                              <span className={`text-[9px] font-mono ${activeStyle.sub}`}>{new Date(bm.createdAt).toLocaleDateString()}</span>
                           </div>

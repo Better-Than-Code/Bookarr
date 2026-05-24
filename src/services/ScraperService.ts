@@ -22,14 +22,14 @@ async function getMagnetLink(link: string, baseUrl: string, indexerName: string)
         'Connection': 'keep-alive',
         'Referer': `${baseUrl}/`
       },
-      timeout: 10000,
+      timeout: 120000,
       validateStatus: (status) => status === 200 || status === 403
     });
 
-    if (response.status === 403 || response.data.includes('Just a moment')) {
-      console.warn(`${indexerName} details page blocked by Cloudflare (403)`);
-      return '';
-    }
+        if (response.status === 403 || response.data.includes('Just a moment')) {
+          console.warn(`${indexerName} details page blocked by Cloudflare (403) or checking (Just a moment)`);
+          return '';
+        }
 
     const $ = cheerio.load(response.data);
     const magnet = $('a[href^="magnet:"]').attr('href');
@@ -71,7 +71,7 @@ export async function searchNative(indexer: IndexerSettings, query: string, type
             'Accept-Language': 'en-US,en;q=0.9',
             'Referer': `${cleanMirror}/`
           },
-          timeout: 10000,
+          timeout: 120000,
           maxRedirects: 5,
           validateStatus: (status) => status === 200 || status === 403 || status === 404
         });
@@ -82,7 +82,7 @@ export async function searchNative(indexer: IndexerSettings, query: string, type
           const generalResponse = await axios.get(generalUrl, {
             httpsAgent: agent,
             headers: response.config.headers,
-            timeout: 10000,
+            timeout: 120000,
             maxRedirects: 5,
             validateStatus: (status) => status === 200 || status === 403 || status === 404
           });
@@ -148,7 +148,7 @@ export async function searchNative(indexer: IndexerSettings, query: string, type
           'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
           'Referer': `${indexer.url}/`
         },
-        timeout: 10000,
+        timeout: 120000,
         maxRedirects: 2
       });
 
@@ -200,7 +200,7 @@ export async function searchNative(indexer: IndexerSettings, query: string, type
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
           'Referer': `${indexer.url}/`
         },
-        timeout: 10000
+        timeout: 120000
       });
 
       const $ = cheerio.load(response.data);
@@ -240,57 +240,67 @@ export async function searchNative(indexer: IndexerSettings, query: string, type
   }
 
   if (indexer.name === 'GloTorrents') {
-    try {
-      const encodedQuery = encodeURIComponent(searchTerm);
-      // Category 51: Books, cat=0 is all
-      const categoryId = type === 'ebook' ? 51 : 52; // Assuming 52 for audiobooks or similar
-      const url = `${indexer.url.replace(/\/$/, '')}/search_results.php?search=${encodedQuery}&cat=${categoryId}&incldead=0&freeleech=0&inc_video_bitrate=0&inc_audio_bitrate=0`;
-      const response = await axios.get(url, {
-        httpsAgent: agent,
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
-          'Referer': `${indexer.url}/`
-        },
-        timeout: 10000
-      });
+    const mirrors = [
+      indexer.url,
+      'https://glodls.to',
+      'https://glotorrents.com'
+    ];
+    for (const mirror of mirrors) {
+      if (!mirror) continue;
+      const cleanMirror = mirror.replace(/\/$/, '');
+      try {
+        const encodedQuery = encodeURIComponent(searchTerm);
+        // Sometimes extra parameters cause a 500 error, so keep it simple
+        const url = `${cleanMirror}/search_results.php?search=${encodedQuery}`;
+        const response = await axios.get(url, {
+          httpsAgent: agent,
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+          },
+          timeout: 120000
+        });
 
-      const $ = cheerio.load(response.data);
-      const rows = $('table.ttable_headertrans tr').get();
-      
-      const promises = rows.slice(1, 11).map(async (element) => {
-        const titleCell = $(element).find('td').eq(1);
-        const titleLink = titleCell.find('a').first();
-        const title = titleLink.attr('title') || titleLink.text().trim();
-        const link = titleLink.attr('href');
+        const $ = cheerio.load(response.data);
+        const rows = $('table.ttable_headertrans tr').get();
         
-        const magnetLink = $(element).find('a[href^="magnet:"]').attr('href');
-        const size = $(element).find('td').eq(4).text().trim();
-        const seedsIdx = 5;
-        const peersIdx = 6;
-        const seeds = parseInt($(element).find('td').eq(seedsIdx).text()) || 0;
-        const peers = parseInt($(element).find('td').eq(peersIdx).text()) || 0;
+        const promises = rows.slice(1, 11).map(async (element) => {
+          const titleCell = $(element).find('td').eq(1);
+          const titleLink = titleCell.find('a').first();
+          const title = titleLink.attr('title') || titleLink.text().trim();
+          const link = titleLink.attr('href');
+          
+          const magnetLink = $(element).find('a[href^="magnet:"]').attr('href');
+          const size = $(element).find('td').eq(4).text().trim();
+          const seedsIdx = 5;
+          const peersIdx = 6;
+          const seeds = parseInt($(element).find('td').eq(seedsIdx).text()) || 0;
+          const peers = parseInt($(element).find('td').eq(peersIdx).text()) || 0;
 
-        if (title && (link || magnetLink)) {
-          const finalMagnet = magnetLink || (link ? await getMagnetLink(link, indexer.url, 'GloTorrents') : '');
-          return {
-            id: `native-glo-${link?.split('id=')?.pop() || Math.random().toString(36).substr(2, 9)}-${Math.random().toString(36).substring(2, 5)}`,
-            title,
-            size: size || 'N/A',
-            seeds,
-            peers,
-            magnetLink: finalMagnet,
-            indexer: 'GloTorrents',
-            type: type,
-            publishDate: new Date().toISOString().split('T')[0]
-          };
+          if (title && (link || magnetLink)) {
+            const finalMagnet = magnetLink || (link ? await getMagnetLink(link, cleanMirror, 'GloTorrents') : '');
+            return {
+              id: `native-glo-${Math.random().toString(36).substr(2, 9)}`,
+              title,
+              size: size || 'N/A',
+              seeds,
+              peers,
+              magnetLink: finalMagnet,
+              indexer: 'GloTorrents',
+              type: type,
+              publishDate: new Date().toISOString().split('T')[0]
+            };
+          }
+          return null;
+        });
+
+        const resolvedResults = await Promise.all(promises);
+        const results = resolvedResults.filter((r): r is TorrentSearchResult => r !== null);
+        if (results.length > 0) return results;
+      } catch (err: any) {
+        if (!err.message.includes('500') && !err.message.includes('timeout') && !err.message.includes('ENOTFOUND')) {
+          console.error(`Error scraping GloTorrents mirror ${cleanMirror}:`, err.message);
         }
-        return null;
-      });
-
-      const resolvedResults = await Promise.all(promises);
-      return resolvedResults.filter((r): r is TorrentSearchResult => r !== null);
-    } catch (err: any) {
-      console.error('Error scraping GloTorrents:', err.message);
+      }
     }
   }
 
@@ -307,7 +317,7 @@ export async function searchNative(indexer: IndexerSettings, query: string, type
           'Accept-Language': 'en-US,en;q=0.9',
           'Referer': `${indexer.url}/`
         },
-        timeout: 12000,
+        timeout: 120000,
         validateStatus: (status) => status === 200 || status === 403
       });
 
@@ -374,7 +384,7 @@ export async function searchNative(indexer: IndexerSettings, query: string, type
           headers: {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
           },
-          timeout: 10000,
+          timeout: 120000,
           validateStatus: (status) => status === 200 || status === 403
         });
 
@@ -431,7 +441,7 @@ export async function searchNative(indexer: IndexerSettings, query: string, type
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
           'Referer': `${indexer.url}/`
         },
-        timeout: 10000
+        timeout: 120000
       });
 
       const $ = cheerio.load(response.data);
@@ -470,65 +480,133 @@ export async function searchNative(indexer: IndexerSettings, query: string, type
     }
   }
 
-  if (indexer.name === 'LibGen') {
+  if (indexer.name === 'Torlock') {
     try {
       const encodedQuery = encodeURIComponent(searchTerm);
-      // LibGen search: column=def is general search
-      const url = `${indexer.url.replace(/\/$/, '')}/search.php?req=${encodedQuery}&column=def`;
+      // Torlock structure: /all/torrents/query.html
+      const url = `https://www.torlock.com/all/torrents/${encodedQuery}.html`;
       const response = await axios.get(url, {
         httpsAgent: agent,
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+          'Referer': `https://www.torlock.com/`
         },
-        timeout: 15000
+        timeout: 120000
       });
 
       const $ = cheerio.load(response.data);
-      // LibGen results are typically in a table with class TableLibgen or just a table with rows
-      const rows = $('table.c tbody tr').get();
-      if (rows.length === 0) {
-          // fallback for different mirrors
-          const rowsAlt = $('table tr').get();
-          if (rowsAlt.length > 5) {
-              // ... continue with rowsAlt
-          }
-      }
-
-      const results: TorrentSearchResult[] = [];
+      const rows = $('table.table tbody tr').get();
       
-      // LibGen table headers: ID, Author(s), Title, Publisher, Year, Pages, Language, Size, Extension, Mirrors
-      // We skip the first row (header)
-      for (const row of rows.slice(1, 15)) {
-          const cells = $(row).find('td');
-          if (cells.length < 10) continue;
+      const promises = rows.slice(0, 10).map(async (element) => {
+        const titleLink = $(element).find('a.fl');
+        const title = titleLink.text().trim();
+        const link = titleLink.attr('href');
+        const magnetLink = $(element).find('a[href^="magnet:"]').attr('href');
+        const size = $(element).find('td').eq(2).text().trim();
+        const seeds = parseInt($(element).find('td').eq(3).text()) || 0;
+        const peers = parseInt($(element).find('td').eq(4).text()) || 0;
 
-          const author = $(cells[1]).text().trim();
-          const titleLink = $(cells[2]).find('a').first();
-          const title = titleLink.text().trim() || $(cells[2]).text().trim();
-          const size = $(cells[7]).text().trim();
-          const extension = $(cells[8]).text().trim();
-          
-          // Mirror 1 is usually the first link in column 10 (9-indexed)
-          const mirrorLink = $(cells[9]).find('a').first().attr('href');
-          
-          if (title && mirrorLink) {
-              results.push({
-                  id: `libgen-${Math.random().toString(36).substr(2, 9)}`,
-                  title: `${author ? author + ' - ' : ''}${title} [${extension.toUpperCase()}]`,
-                  size,
-                  seeds: 100, // Simulated high availability for DDL
-                  peers: 0,
-                  magnetLink: '', // No magnet for DDL
-                  downloadUrl: mirrorLink, // This is a mirror page link, not a direct file link yet
-                  indexer: 'LibGen',
-                  type: type,
-                  publishDate: new Date().toISOString().split('T')[0]
-              });
-          }
-      }
-      return results;
+        if (title && magnetLink) {
+          return {
+            id: `native-torlock-${Math.random().toString(36).substr(2, 9)}`,
+            title,
+            size: size || 'N/A',
+            seeds,
+            peers,
+            magnetLink,
+            indexer: 'Torlock',
+            type: type,
+            publishDate: new Date().toISOString().split('T')[0]
+          };
+        }
+        return null;
+      });
+
+      const resolvedResults = await Promise.all(promises);
+      return resolvedResults.filter((r): r is TorrentSearchResult => r !== null);
     } catch (err: any) {
-      console.error('Error scraping LibGen:', err.message);
+      console.error('Error scraping Torlock:', err.message);
+    }
+  }
+
+  if (indexer.name === 'LibGen') {
+    const mirrors = [
+      indexer.url,
+      'https://libgen.rs',
+      'https://libgen.is',
+      'https://libgen.st',
+      'https://libgen.li'
+    ];
+    for (const mirror of mirrors) {
+      if (!mirror) continue;
+      const cleanMirror = mirror.replace(/\/$/, '');
+      try {
+        const encodedQuery = encodeURIComponent(searchTerm);
+        // LibGen search: column=def is general search
+        const url = `${cleanMirror}/search.php?req=${encodedQuery}&column=def`;
+        const response = await axios.get(url, {
+          httpsAgent: agent,
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+          },
+          timeout: 120000
+        });
+
+        const $ = cheerio.load(response.data);
+        // LibGen results are typically in a table with class TableLibgen or just a table with rows
+        const rows = $('table.c tbody tr').get();
+        if (rows.length === 0) {
+            // fallback for different mirrors
+            const rowsAlt = $('table tr').get();
+            if (rowsAlt.length > 5) {
+                // ... continue with rowsAlt
+            }
+        }
+
+        const results: TorrentSearchResult[] = [];
+        
+        // LibGen table headers: ID, Author(s), Title, Publisher, Year, Pages, Language, Size, Extension, Mirrors
+        // We skip the first row (header)
+        for (const row of rows.slice(1, 15)) {
+            const cells = $(row).find('td');
+            if (cells.length < 10) continue;
+
+            const author = $(cells[1]).text().trim();
+            const titleLink = $(cells[2]).find('a').first();
+            const title = titleLink.text().trim() || $(cells[2]).text().trim();
+            const size = $(cells[7]).text().trim();
+            const extension = $(cells[8]).text().trim();
+            
+            // Mirror 1 is usually the first link in column 10 (9-indexed)
+            const mirrorLink = $(cells[9]).find('a').first().attr('href');
+            
+            if (title && mirrorLink) {
+                let finalUrl = mirrorLink;
+                if (finalUrl.startsWith('/')) {
+                   finalUrl = `http://library.lol${finalUrl}`; // Most mirror links go to library.lol via relative or subdomains depending on mirror
+                }
+                results.push({
+                    id: `libgen-${Math.random().toString(36).substr(2, 9)}`,
+                    title: `${author ? author + ' - ' : ''}${title} [${extension.toUpperCase()}]`,
+                    size,
+                    seeds: 100, // Simulated high availability for DDL
+                    peers: 0,
+                    magnetLink: '', // No magnet for DDL
+                    downloadUrl: finalUrl, // This is a mirror page link, not a direct file link yet
+                    indexer: 'LibGen',
+                    type: type,
+                    publishDate: new Date().toISOString().split('T')[0]
+                });
+            }
+        }
+        if (results.length > 0) {
+           return results;
+        }
+      } catch (err: any) {
+        if (!err.message.includes('404') && !err.message.includes('502') && !err.message.includes('timeout') && !err.message.includes('ENOTFOUND')) {
+          console.error(`Error scraping LibGen mirror ${cleanMirror}:`, err.message);
+        }
+      }
     }
   }
 

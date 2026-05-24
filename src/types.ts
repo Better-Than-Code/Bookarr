@@ -24,9 +24,12 @@ export interface Book {
   coverUrl: string;
   type: 'audiobook' | 'ebook';
   description: string;
+  publisher?: string;
+  year?: string;
   duration?: number; // for audiobooks in seconds
   pages?: number; // for ebooks
   genres: string[];
+  isbn?: string;
   progress: number; // 0 - 100
   currentTime?: number; // for audiobooks in seconds
   currentPage?: number; // for ebooks
@@ -46,7 +49,7 @@ export interface TorrentTask {
   downloadSpeed: string; // e.g. "2.4 MB/s"
   uploadSpeed: string;
   eta: string;
-  status: 'downloading' | 'seeding' | 'completed' | 'paused';
+  status: 'downloading' | 'seeding' | 'completed' | 'paused' | 'stalled' | 'failed' | 'connecting';
   magnetLink: string;
   infoHash?: string;
   numPeers?: number;
@@ -58,6 +61,11 @@ export interface TorrentTask {
     type: 'audio text image' | 'audio' | 'ebook' | 'other';
   }[];
   enrichedBook?: Book;
+  zeroSpeedSince?: number; // timestamp in ms when speed became 0
+  retryCount?: number;
+  lastPeerViewed?: number;
+  addedAt?: string;
+  lastAnnounceAt?: number;
 }
 
 export interface TorrentSearchResult {
@@ -89,6 +97,7 @@ export interface IndexerSettings {
 export interface BookrrConfig {
   webtorEnabled: boolean;
   localDownloadPath: string;
+  deletedIndexerNames?: string[];
 }
 
 export interface MessageLog {

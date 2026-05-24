@@ -5,33 +5,73 @@
 
 import React, { useState, useEffect } from 'react';
 import { Search, Download, Database, Users, Calendar, ShieldCheck, HelpCircle } from 'lucide-react';
-import { TorrentSearchResult, BookrrConfig } from '../types';
+import { TorrentSearchResult, BookrrConfig, IndexerSettings } from '../types';
 
 interface IndexerSearchProps {
   onAddTorrent: (torrent: TorrentSearchResult) => void;
   recentLogs: any[];
-  searchSeed?: string;
-  onClearSearchSeed?: () => void;
+  searchState: {
+    query: string;
+    type: 'ebook' | 'audiobook';
+    results: TorrentSearchResult[];
+    searchedOnce: boolean;
+  };
+  setSearchState: React.Dispatch<React.SetStateAction<{
+    query: string;
+    type: 'ebook' | 'audiobook';
+    results: TorrentSearchResult[];
+    searchedOnce: boolean;
+  }>>;
   config: BookrrConfig;
+  indexers: IndexerSettings[];
   setActiveTab: (tab: string) => void;
 }
 
 export default function IndexerSearch({
   onAddTorrent,
   recentLogs,
-  searchSeed,
-  onClearSearchSeed,
+  searchState,
+  setSearchState,
   config,
+  indexers,
   setActiveTab
 }: IndexerSearchProps) {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchType, setSearchType] = useState<'ebook' | 'audiobook'>('ebook');
-  const [searchResults, setSearchResults] = useState<TorrentSearchResult[]>([]);
+  const [searchQuery, setSearchQuery] = useState(searchState.query);
+  const [searchType, setSearchType] = useState<'ebook' | 'audiobook'>(searchState.type);
+  const [searchResults, setSearchResults] = useState<TorrentSearchResult[]>(searchState.results);
+  const [searchedOnce, setSearchedOnce] = useState(searchState.searchedOnce);
+  
+  // Debounce search query to prevent excessive calls
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchQuery && searchQuery !== searchState.query) {
+        handleSearch(searchQuery);
+      }
+    }, 600) as unknown as number; // Slightly longer for better typing flow
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Synchronize local search state with App-level state
+  useEffect(() => {
+    setSearchState({
+      query: searchQuery,
+      type: searchType,
+      results: searchResults,
+      searchedOnce
+    });
+  }, [searchQuery, searchType, searchResults, searchedOnce]);
+
+  useEffect(() => {
+    if (searchState.query && !searchState.searchedOnce) {
+      handleSearch(searchState.query);
+    }
+  }, [searchState.query, searchState.searchedOnce]);
+
   const [enrichedData, setEnrichedData] = useState<Record<string, any>>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [completedIndexers, setCompletedIndexers] = useState<string[]>([]);
   const [searchProgress, setSearchProgress] = useState(0);
   const [statusMessage, setStatusMessage] = useState('');
-  const [searchedOnce, setSearchedOnce] = useState(false);
   const [inspectingId, setInspectingId] = useState<string | null>(null);
   const [inspectedFiles, setInspectedFiles] = useState<Record<string, any[]>>({});
 
@@ -41,15 +81,18 @@ export default function IndexerSearch({
     const queryVal = (typeof e === 'string' ? e : searchQuery).trim();
     
     // Only search if we have a real query
-    if (!queryVal) {
-        setSearchResults([]);
+    if (!queryVal) return;
+
+    // Avoid re-searching the same query if results are already present
+    if (queryVal === searchState.query && searchedOnce && searchResults.length > 0 && !isLoading) {
         return;
     }
 
     setSearchedOnce(true);
     setIsLoading(true);
     setSearchProgress(5);
-    setStatusMessage('Connecting to indexer cloud...');
+    setCompletedIndexers([]);
+    setStatusMessage('Querying book repositories...');
     setSearchResults([]);
     setEnrichedData({});
     
@@ -76,8 +119,8 @@ export default function IndexerSearch({
               const data = block.slice(6);
               if (data === '[DONE]') {
                 setSearchProgress(100);
-                setStatusMessage(`Observation complete. Found ${resultCount} verified results.`);
-                setTimeout(() => setIsLoading(false), 1000);
+                setStatusMessage(`Complete. Found ${resultCount} verified results.`);
+                setTimeout(() => setIsLoading(false), 800);
                 return;
               }
               try {
@@ -85,7 +128,12 @@ export default function IndexerSearch({
                 
                 if (results.status) {
                   setStatusMessage(results.status);
-                  setSearchProgress(prev => Math.min(95, prev + 15));
+                  // Extract indexer name if possible
+                  if (results.status.includes('Completed')) {
+                     const parts = results.status.split(' ');
+                     if (parts[0]) setCompletedIndexers(prev => [...prev, parts[0]]);
+                  }
+                  setSearchProgress(prev => Math.min(95, prev + 10));
                   continue;
                 }
 
@@ -105,8 +153,19 @@ export default function IndexerSearch({
 
                     if (filtered.length > 0) {
                         resultCount += filtered.length;
-                        setSearchResults(prev => [...prev, ...filtered].sort((a, b) => b.seeds - a.seeds));
+                        setSearchResults(prev => {
+                          const combined = [...prev, ...filtered];
+                          // Sort by quality score: seeds * 2 + peers + (size_weight)
+                          return combined.sort((a, b) => {
+                            const scoreA = (a.seeds * 3) + (a.peers * 1);
+                            const scoreB = (b.seeds * 3) + (b.peers * 1);
+                            return scoreB - scoreA;
+                          });
+                        });
                         setSearchProgress(prev => Math.min(98, prev + 5));
+                        
+                        // Prefetch top results metadata immediately
+                        filtered.slice(0, 3).forEach(res => enrichResult(res));
                     }
                 }
               } catch (e) {
@@ -162,16 +221,6 @@ export default function IndexerSearch({
         setInspectingId(null);
     }
   };
-
-  useEffect(() => {
-    if (searchSeed) {
-      setSearchQuery(searchSeed);
-      handleSearch(searchSeed);
-      if (onClearSearchSeed) {
-        onClearSearchSeed();
-      }
-    }
-  }, [searchSeed]);
 
   return (
     <div className="space-y-6">
@@ -235,17 +284,35 @@ export default function IndexerSearch({
             {isLoading && (
               <div className="mt-4 space-y-2 animate-in fade-in slide-in-from-top-2">
                 <div className="flex justify-between items-center px-1">
-                  <span className="text-[10px] font-mono text-amber-500 font-bold uppercase tracking-wider animate-pulse flex items-center gap-2">
+                  <div className="flex items-center gap-2">
                     <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" />
-                    {statusMessage}
-                  </span>
+                    <span className="text-[10px] font-mono text-amber-500 font-bold uppercase tracking-wider">
+                      {statusMessage}
+                    </span>
+                  </div>
                   <span className="text-[10px] font-mono text-neutral-500">{searchProgress}%</span>
                 </div>
+                
                 <div className="w-full bg-[#1e1e1e] h-1 rounded-full overflow-hidden border border-[#2a2a2a]">
                   <div 
                     className="h-full bg-amber-500 transition-all duration-500 ease-out shadow-[0_0_10px_rgba(245,158,11,0.3)]"
                     style={{ width: `${searchProgress}%` }}
                   />
+                </div>
+
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {indexers.filter(idx => idx.enabled).map(idx => (
+                    <div 
+                      key={idx.name}
+                      className={`text-[9px] px-1.5 py-0.5 rounded-md border font-mono transition-colors ${
+                        completedIndexers.includes(idx.name) 
+                          ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' 
+                          : 'bg-[#1a1a1a] text-neutral-600 border-[#222]'
+                      }`}
+                    >
+                      {idx.name}
+                    </div>
+                  ))}
                 </div>
               </div>
             )}

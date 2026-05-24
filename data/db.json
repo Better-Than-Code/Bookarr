@@ -1,6 +1,63 @@
 {
-  "books": [],
-  "torrentTasks": [],
+  "books": [
+    {
+      "id": "book-1779633397971",
+      "title": "Steve Jobs",
+      "author": "Walter Isaacson",
+      "coverUrl": "https://covers.openlibrary.org/b/id/12374726-L.jpg",
+      "type": "ebook",
+      "description": "Discovered and downloaded via Bookrr integration from Tracker The Pirate Bay.",
+      "genres": [
+        "Literature",
+        "Document"
+      ],
+      "progress": 8,
+      "currentTime": 0,
+      "isDownloaded": true,
+      "size": "4.15 MiB",
+      "addedAt": "2026-05-24T14:36:37.036Z",
+      "chapters": [],
+      "currentPage": 11,
+      "filePath": "/app/applet/data/downloads/Steve Jobs by Walter Isaacson EPUB/Steve Jobs by Walter Isaacson EPUB/Steve Jobs by Walter Isaacson.epub",
+      "fileUrl": "/api/files/Steve Jobs by Walter Isaacson.epub"
+    }
+  ],
+  "torrentTasks": [
+    {
+      "id": "task-1779637741815",
+      "name": "Nina Teicholz - The Big Fat Surprise: Why Butter, Meat and Chees",
+      "size": "5.78 MiB",
+      "progress": 0,
+      "downloadSpeed": "0.0 MB/s",
+      "uploadSpeed": "0 KB/s",
+      "eta": "Calculating...",
+      "status": "downloading",
+      "magnetLink": "magnet:?xt=urn:btih:A63C4768CB89D9FC1EF16DF0793579F0438A2B67&dn=Nina+Teicholz+-+The+Big+Fat+Surprise%3A+Why+Butter%2C+Meat+and+Chees&tr=http%3A%2F%2Fp4p.arenabg.com%3A1337%2Fannounce&tr=udp%3A%2F%2F47.ip-51-68-199.eu%3A6969%2Fannounce&tr=udp%3A%2F%2F9.rarbg.me%3A2780%2Fannounce&tr=udp%3A%2F%2F9.rarbg.to%3A2710%2Fannounce&tr=udp%3A%2F%2F9.rarbg.to%3A2730%2Fannounce&tr=udp%3A%2F%2F9.rarbg.to%3A2920%2Fannounce&tr=udp%3A%2F%2Fopen.stealth.si%3A80%2Fannounce&tr=udp%3A%2F%2Fopentracker.i2p.rocks%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.coppersurfer.tk%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.cyberia.is%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.dler.org%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.internetwarriors.net%3A1337%2Fannounce&tr=udp%3A%2F%2Ftracker.leechers-paradise.org%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.openbittorrent.com%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337&tr=udp%3A%2F%2Ftracker.pirateparty.gr%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.tiny-vps.com%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.torrent.eu.org%3A451%2Fannounce",
+      "indexer": "The Pirate Bay",
+      "files": [],
+      "infoHash": "a63c4768cb89d9fc1ef16df0793579f0438a2b67",
+      "enrichedBook": {
+        "id": "book-1779637744159",
+        "title": "Nina Teicholz - The Big Fat Surprise: Why Butter, Meat and Chees",
+        "author": "Unknown Author",
+        "coverUrl": "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?auto=format&fit=crop&q=80&w=400",
+        "type": "ebook",
+        "description": "Discovered and downloaded via Bookrr integration from Tracker The Pirate Bay.",
+        "genres": [
+          "Literature",
+          "Document"
+        ],
+        "progress": 0,
+        "currentTime": 0,
+        "isDownloaded": true,
+        "size": "5.78 MiB",
+        "addedAt": "2026-05-24T15:49:04.159Z",
+        "chapters": [],
+        "currentPage": 1
+      },
+      "numPeers": 0
+    }
+  ],
   "logs": [
     {
       "id": "log-1",
@@ -8,11 +65,200 @@
       "level": "success",
       "source": "server",
       "message": "Bookrr native media suite initialized successfully."
+    },
+    {
+      "id": "log-1779627859928",
+      "timestamp": "2026-05-24T13:04:19.928Z",
+      "level": "info",
+      "source": "webtor",
+      "message": "Initiated real torrent stream: [Steve Jobs by Walter Isaacson EPUB] via WebTorrent client."
+    },
+    {
+      "id": "log-1779627873153",
+      "timestamp": "2026-05-24T13:04:33.153Z",
+      "level": "success",
+      "source": "webtor",
+      "message": "Torrent [Steve Jobs by Walter Isaacson EPUB] downloaded fully. Registered new E-book in Library!"
+    },
+    {
+      "id": "log-1779632110480",
+      "timestamp": "2026-05-24T14:15:10.480Z",
+      "level": "warn",
+      "source": "server",
+      "message": "Removed track: Book [Steve Jobs] and local files deleted."
+    },
+    {
+      "id": "log-1779632207659",
+      "timestamp": "2026-05-24T14:16:47.659Z",
+      "level": "info",
+      "source": "server",
+      "message": "Bookrr system configuration settings updated locally."
+    },
+    {
+      "id": "log-1779632273959",
+      "timestamp": "2026-05-24T14:17:53.959Z",
+      "level": "info",
+      "source": "server",
+      "message": "Bookrr system configuration settings updated locally."
+    },
+    {
+      "id": "log-1779632366902",
+      "timestamp": "2026-05-24T14:19:26.902Z",
+      "level": "info",
+      "source": "server",
+      "message": "Bookrr system configuration settings updated locally."
+    },
+    {
+      "id": "log-1779632382459",
+      "timestamp": "2026-05-24T14:19:42.459Z",
+      "level": "info",
+      "source": "server",
+      "message": "Bookrr system configuration settings updated locally."
+    },
+    {
+      "id": "log-1779633359830",
+      "timestamp": "2026-05-24T14:35:59.830Z",
+      "level": "warn",
+      "source": "webtor",
+      "message": "Removed torrent download: [Steve Jobs by Walter Isaacson EPUB]. Deleted cache."
+    },
+    {
+      "id": "log-1779633397036",
+      "timestamp": "2026-05-24T14:36:37.036Z",
+      "level": "info",
+      "source": "webtor",
+      "message": "Initiated real torrent stream: [Steve Jobs by Walter Isaacson EPUB] via WebTorrent client."
+    },
+    {
+      "id": "log-1779633397971",
+      "timestamp": "2026-05-24T14:36:37.971Z",
+      "level": "success",
+      "source": "webtor",
+      "message": "Torrent [Steve Jobs by Walter Isaacson EPUB] downloaded fully. Registered new E-book in Library!"
+    },
+    {
+      "id": "log-1779634839883",
+      "timestamp": "2026-05-24T15:00:39.883Z",
+      "level": "info",
+      "source": "webtor",
+      "message": "Initiated real torrent stream: [Eragon by Christopher Paolini MOBI] via WebTorrent client."
+    },
+    {
+      "id": "log-1779634910613",
+      "timestamp": "2026-05-24T15:01:50.613Z",
+      "level": "info",
+      "source": "webtor",
+      "message": "Initiated real torrent stream: [The Big Fat Surprise - Why Butter, Meat and Cheese Belong in a H] via WebTorrent client."
+    },
+    {
+      "id": "log-1779635141570",
+      "timestamp": "2026-05-24T15:05:41.570Z",
+      "level": "warn",
+      "source": "webtor",
+      "message": "Removed torrent download: [Eragon by Christopher Paolini MOBI]. Deleted cache."
+    },
+    {
+      "id": "log-1779635142764",
+      "timestamp": "2026-05-24T15:05:42.764Z",
+      "level": "warn",
+      "source": "webtor",
+      "message": "Removed torrent download: [The Big Fat Surprise - Why Butter, Meat and Cheese Belong in a H]. Deleted cache."
+    },
+    {
+      "id": "log-1779635144770",
+      "timestamp": "2026-05-24T15:05:44.770Z",
+      "level": "warn",
+      "source": "webtor",
+      "message": "Removed torrent download: [Steve Jobs by Walter Isaacson EPUB]. Deleted cache."
+    },
+    {
+      "id": "log-1779635304769",
+      "timestamp": "2026-05-24T15:08:24.769Z",
+      "level": "info",
+      "source": "webtor",
+      "message": "Initiated real torrent stream: [The History of the Medieval World by Susan Wise Bauer EPUB] via WebTorrent client."
+    },
+    {
+      "id": "log-1779635725645",
+      "timestamp": "2026-05-24T15:15:25.645Z",
+      "level": "success",
+      "source": "organizer",
+      "message": "Organized File: Moved and renamed [Steve Jobs - Walter Isaacson.epub] → destination [Ebooks/Walter Isaacson/Steve Jobs/Steve Jobs - Walter Isaacson.epub] under Library."
+    },
+    {
+      "id": "log-1779635803915",
+      "timestamp": "2026-05-24T15:16:43.915Z",
+      "level": "error",
+      "source": "server",
+      "message": "Direct download failed for [Test LibGen]: Could not resolve download link"
+    },
+    {
+      "id": "log-1779636066755",
+      "timestamp": "2026-05-24T15:21:06.755Z",
+      "level": "warn",
+      "source": "webtor",
+      "message": "Removed torrent download: [Test LibGen]. Deleted cache."
+    },
+    {
+      "id": "log-1779636068543",
+      "timestamp": "2026-05-24T15:21:08.543Z",
+      "level": "warn",
+      "source": "webtor",
+      "message": "Removed torrent download: [The History of the Medieval World by Susan Wise Bauer EPUB]. Deleted cache."
+    },
+    {
+      "id": "log-1779636134303",
+      "timestamp": "2026-05-24T15:22:14.303Z",
+      "level": "info",
+      "source": "webtor",
+      "message": "Initiated real torrent stream: [The History of the Medieval World by Susan Wise Bauer EPUB] via WebTorrent client."
+    },
+    {
+      "id": "log-1779636607942",
+      "timestamp": "2026-05-24T15:30:07.942Z",
+      "level": "info",
+      "source": "webtor",
+      "message": "Initiated real torrent stream: [Test Torrent] via WebTorrent client."
+    },
+    {
+      "id": "log-1779637088815",
+      "timestamp": "2026-05-24T15:38:08.815Z",
+      "level": "info",
+      "source": "webtor",
+      "message": "Initiated real torrent stream: [Nina Teicholz - The Big Fat Surprise: Why Butter, Meat and Chees] via WebTorrent client."
+    },
+    {
+      "id": "log-1779637106030",
+      "timestamp": "2026-05-24T15:38:26.030Z",
+      "level": "warn",
+      "source": "webtor",
+      "message": "Removed torrent download: [Test Torrent]. Deleted cache."
+    },
+    {
+      "id": "log-1779637108669",
+      "timestamp": "2026-05-24T15:38:28.669Z",
+      "level": "warn",
+      "source": "webtor",
+      "message": "Removed torrent download: [The History of the Medieval World by Susan Wise Bauer EPUB]. Deleted cache."
+    },
+    {
+      "id": "log-1779637696888",
+      "timestamp": "2026-05-24T15:48:16.888Z",
+      "level": "warn",
+      "source": "webtor",
+      "message": "Removed torrent download: [Nina Teicholz - The Big Fat Surprise: Why Butter, Meat and Chees]. Deleted cache."
+    },
+    {
+      "id": "log-1779637741815",
+      "timestamp": "2026-05-24T15:49:01.815Z",
+      "level": "info",
+      "source": "webtor",
+      "message": "Initiated real torrent stream: [Nina Teicholz - The Big Fat Surprise: Why Butter, Meat and Chees] via WebTorrent client."
     }
   ],
   "config": {
     "webtorEnabled": true,
-    "localDownloadPath": "/data/downloads/bookrr"
+    "localDownloadPath": "/data/download/"
   },
   "indexers": [
     {
@@ -21,7 +267,10 @@
       "url": "https://1337x.to",
       "apiKey": "",
       "enabled": true,
-      "type": "native"
+      "type": "native",
+      "status": "online",
+      "lastChecked": "2026-05-24T15:46:33.978Z",
+      "error": "Cloudflare Protected (But reachable)"
     },
     {
       "id": "2",
@@ -29,7 +278,70 @@
       "url": "https://limetorrents.info",
       "apiKey": "",
       "enabled": true,
-      "type": "native"
+      "type": "native",
+      "status": "online",
+      "lastChecked": "2026-05-24T15:46:36.535Z"
+    },
+    {
+      "id": "3",
+      "name": "TorrentDownloads",
+      "url": "https://www.torrentdownloads.pro",
+      "apiKey": "",
+      "enabled": true,
+      "type": "native",
+      "status": "online",
+      "lastChecked": "2026-05-24T15:46:39.041Z"
+    },
+    {
+      "id": "4",
+      "name": "GloTorrents",
+      "url": "https://glodls.to",
+      "apiKey": "",
+      "enabled": true,
+      "type": "native",
+      "status": "online",
+      "lastChecked": "2026-05-24T15:46:42.957Z"
+    },
+    {
+      "id": "5",
+      "name": "Kickass",
+      "url": "https://kickasst.net",
+      "apiKey": "",
+      "enabled": true,
+      "type": "native",
+      "status": "online",
+      "lastChecked": "2026-05-24T15:46:43.504Z"
+    },
+    {
+      "id": "6",
+      "name": "The Pirate Bay",
+      "url": "https://thepiratebay.org",
+      "apiKey": "",
+      "enabled": true,
+      "type": "native",
+      "status": "online",
+      "lastChecked": "2026-05-24T15:46:46.487Z"
+    },
+    {
+      "id": "7",
+      "name": "SolidTorrents",
+      "url": "https://solidtorrents.to",
+      "apiKey": "",
+      "enabled": true,
+      "type": "native",
+      "status": "online",
+      "lastChecked": "2026-05-24T15:46:48.418Z"
+    },
+    {
+      "id": "8",
+      "name": "LibGen",
+      "url": "https://libgen.is",
+      "apiKey": "",
+      "enabled": true,
+      "type": "native",
+      "status": "offline",
+      "lastChecked": "2026-05-24T15:47:03.426Z",
+      "error": "timeout of 15000ms exceeded"
     }
   ]
 }

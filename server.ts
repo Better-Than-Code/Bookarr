@@ -10,12 +10,21 @@ import { createServer as createViteServer } from 'vite';
 import { Book, TorrentTask, TorrentSearchResult, IndexerSettings, BookrrConfig, MessageLog } from './src/types';
 import { searchAllIndexers } from './src/services/TrackerService';
 import { enrichMetadata } from './src/services/MetadataService';
+import { getMetadataFromFile } from './src/services/MetadataParser.server';
 import axios from 'axios';
 import https from 'https';
 import * as cheerio from 'cheerio';
 // @ts-ignore
 import epubParser from 'epub-parser';
 import { GoogleGenAI, Type } from "@google/genai";
+import multer from 'multer';
+
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
+});
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
 
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
@@ -37,10 +46,222 @@ import WebTorrent from 'webtorrent';
 // @ts-ignore
 import EPub from 'epub';
 
-const client = new WebTorrent();
-client.on('error', (err: any) => {
-  console.error('Global WebTorrent client error:', err);
+const client = new WebTorrent({
+  maxConns: 1000,
+  tracker: true,
+  dht: true,
+  lsd: true,
+  webSeeds: true
 });
+
+const PUBLIC_TRACKERS = [
+  'udp://tracker.opentrackr.org:1337/announce',
+  'udp://open.stealth.si:80/announce',
+  'udp://tracker.torrent.eu.org:451/announce',
+  'udp://tracker.moeking.me:6969/announce',
+  'udp://explodie.org:6969/announce',
+  'udp://tracker.bitsearch.to:1337/announce',
+  'udp://tracker.openbittorrent.com:6969/announce',
+  'udp://exodus.desync.com:6969/announce',
+  'udp://tracker.thepiratebay.org:80/announce',
+  'udp://p4p.arenabg.com:1337/announce',
+  'http://tracker.openbittorrent.com:80/announce',
+  'http://tracker.opentrackr.org:1337/announce',
+  'wss://tracker.btorrent.xyz',
+  'wss://tracker.openwebtorrent.com'
+];
+
+const OPENLIBRARY_TIMEOUT = 300000;
+
+const fetchWithRetry = async (url: string, options: any, retries = 2) => {
+  try {
+    return await axios.get(url, options);
+  } catch (err: any) {
+    if (retries > 0 && (err.code === 'ECONNABORTED' || err.message.includes('timeout') || err.response?.status >= 500)) {
+      console.log(`Retrying fetch for ${url} (${retries} left)...`);
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      return fetchWithRetry(url, options, retries - 1);
+    }
+    throw err;
+  }
+};
+
+const injectTrackers = (magnet: string): string => {
+    if (!magnet || !magnet.startsWith('magnet:')) return magnet;
+    let enhancedMagnet = magnet;
+    PUBLIC_TRACKERS.forEach(tr => {
+        if (!enhancedMagnet.includes(encodeURIComponent(tr))) {
+            enhancedMagnet += `&tr=${encodeURIComponent(tr)}`;
+        }
+    });
+    return enhancedMagnet;
+};
+
+const extractInfoHash = (magnet: string): string | null => {
+    if (!magnet || !magnet.startsWith('magnet:')) return null;
+    const match = magnet.match(/xt=urn:btih:([a-fA-F0-9]+)/);
+    return match ? match[1].toLowerCase() : null;
+};
+
+client.on('error', (err: any) => {
+  if (err.message && err.message.includes('Cannot add duplicate torrent')) {
+    console.log('[WEBTOR] Ignored duplicate torrent add attempt');
+  } else {
+    console.error('[WEBTOR] Global client error:', err);
+  }
+});
+
+client.on('warning', (err: any) => {
+  const msg = err.message || err;
+  if (typeof msg === 'string' && (
+      msg.includes('fetch failed') || 
+      msg.includes('Error connecting to') || 
+      msg.includes('ECONNREFUSED') ||
+      msg.includes('ETIMEDOUT') ||
+      msg.includes('socket hang up') ||
+      msg.includes('handshake timeout')
+  )) return;
+  console.warn('[WEBTOR] Client warning:', msg);
+});
+
+const addTorrentToClient = (task: TorrentTask): any => {
+    const downloadBase = STORAGE_DIRS.download;
+    const magnet = injectTrackers(task.magnetLink);
+    const magnetHash = extractInfoHash(magnet) || task.infoHash;
+    
+    // Check if torrent already exists in the client
+    const existing = client.torrents.find((t: any) => 
+        (magnetHash && t.infoHash && t.infoHash.toLowerCase() === magnetHash.toLowerCase()) ||
+        t.magnetURI === magnet
+    );
+
+    if (existing) {
+        console.log(`[WEBTOR] Torrent already exists in client: ${task.name}`);
+        if (existing.ready) {
+            const db = loadDB();
+            const t = db.torrentTasks.find((tt: any) => tt.id === task.id);
+            if (t && t.status === 'connecting') {
+                t.status = 'downloading';
+                t.infoHash = existing.infoHash;
+                saveDB(db);
+            }
+        }
+        return existing;
+    }
+
+    try {
+        const torrent = client.add(magnet, { 
+          path: path.join(downloadBase, task.name),
+          announce: PUBLIC_TRACKERS
+        });
+
+        console.log(`[WEBTOR] Initiated torrent add: ${task.name} (${torrent.infoHash || 'Pending Hash'})`);
+
+        // Log periodically if it stays stuck
+        const stuckLogger = setInterval(() => {
+            if (!torrent.ready) {
+                console.log(`[WEBTOR] Still waiting for metadata: ${task.name} - Peers: ${torrent.numPeers}`);
+                // Try to force re-announce tracking
+                if (torrent.numPeers === 0) {
+                    try {
+                        // @ts-ignore
+                        if (torrent.discovery && torrent.discovery.tracker) {
+                           // @ts-ignore
+                           torrent.discovery.tracker.announce();
+                        }
+                    } catch(e) {}
+                }
+            } else if (torrent.progress < 1 && torrent.downloadSpeed === 0) {
+                console.log(`[WEBTOR] Active but 0 speed: ${task.name} - Progress: ${(torrent.progress * 100).toFixed(1)}% - Peers: ${torrent.numPeers}`);
+            }
+        }, 60000);
+
+        const cleanupLogger = () => clearInterval(stuckLogger);
+
+        torrent.on('ready', () => {
+            console.log(`[WEBTOR] Torrent READY: ${task.name} (${torrent.infoHash})`);
+            const db = loadDB();
+            const t = db.torrentTasks.find((tt: any) => tt.id === task.id);
+            if (t) {
+                t.infoHash = torrent.infoHash;
+                if (t.status === 'connecting') t.status = 'downloading';
+                saveDB(db);
+            }
+        });
+
+        torrent.on('done', () => {
+            cleanupLogger();
+            console.log(`[WEBTOR] Internal download complete for: ${task.name}`);
+        });
+
+        torrent.on('close', cleanupLogger);
+        torrent.on('error', (e: any) => {
+            cleanupLogger();
+            if (e.message && e.message.includes('duplicate')) {
+                console.log(`[WEBTOR] Ignored duplicate error for ${task.name}`);
+                return;
+            }
+            console.error(`Error with torrent ${task.name}: ${e}`);
+            const db = loadDB();
+            const t = db.torrentTasks.find((tt: any) => tt.id === task.id);
+            if (t) {
+                t.status = 'failed';
+                saveDB(db);
+            }
+        });
+
+        torrent.on('metadata', () => {
+            console.log(`[WEBTOR] Metadata received for: ${task.name} (${torrent.infoHash})`);
+        });
+
+        torrent.on('warning', (err: any) => {
+            const msg = err.message || err;
+            if (typeof msg === 'string' && (
+                msg.includes('fetch failed') || 
+                msg.includes('Error connecting to') ||
+                msg.includes('ECONNREFUSED') ||
+                msg.includes('ETIMEDOUT') ||
+                msg.includes('socket hang up')
+            )) return;
+            console.warn(`[WEBTOR] Warning for ${task.name}:`, msg);
+        });
+
+        return torrent;
+    } catch (err: any) {
+        if (err.message && err.message.includes('duplicate')) {
+            return client.torrents.find((t: any) => 
+               (magnetHash && t.infoHash && t.infoHash.toLowerCase() === magnetHash.toLowerCase())
+            );
+        }
+        throw err;
+    }
+}
+
+const MAX_RETRY_ATTEMPTS = 3;
+
+const restartTorrent = (task: TorrentTask): any => {
+    const db = loadDB();
+    const t = db.torrentTasks.find((item: any) => item.id === task.id);
+    if (!t) return null;
+
+    const currentRetries = t.retryCount || 0;
+    if (currentRetries >= MAX_RETRY_ATTEMPTS) {
+        console.log(`Max retries reached for ${task.name}. Marking as failed.`);
+        t.status = 'failed';
+        saveDB(db);
+        return null;
+    }
+
+    t.retryCount = currentRetries + 1;
+    saveDB(db);
+
+    const existing = client.torrents.find((t: any) => t.magnetURI === task.magnetLink || t.infoHash === task.infoHash);
+    if(existing) {
+        console.log(`Restarting stalled torrent: ${task.name} (Attempt ${t.retryCount}/${MAX_RETRY_ATTEMPTS})`);
+        client.remove(existing);
+    }
+    return addTorrentToClient(task);
+}
 
 const app = express();
 const PORT = 3000;
@@ -64,7 +285,7 @@ async function checkTrackerHealth(url: string): Promise<{ status: 'online' | 'of
         'Cache-Control': 'no-cache',
         'Pragma': 'no-cache'
       },
-      timeout: 15000,
+      timeout: 120000,
       validateStatus: (status) => (status >= 200 && status < 400) || status === 403
     });
     if (response.status === 403) {
@@ -96,17 +317,20 @@ async function runHealthChecks() {
 // Function to resume previously active torrents
 async function resumeActiveTorrents() {
   const db = loadDB();
-  const downloading = db.torrentTasks.filter((t: TorrentTask) => t.status === 'downloading');
+  const downloading = db.torrentTasks.filter((t: TorrentTask) => t.status === 'downloading' || t.status === 'connecting' || t.status === 'stalled');
   
   console.log(`Resuming ${downloading.length} active torrent downloads...`);
   
   for (const task of downloading) {
     if (task.magnetLink && task.magnetLink.startsWith('magnet:')) {
+      const magnet = injectTrackers(task.magnetLink);
+      const existing = client.torrents.find((t: any) => t.magnetURI === magnet || t.infoHash === task.infoHash);
+      if (existing) {
+        console.log(`Torrent already active, skipping re-add: ${task.name}`);
+        continue;
+      }
       try {
-        const downloadBase = path.join(DATA_DIR, 'downloads');
-        client.add(task.magnetLink, { path: path.join(downloadBase, task.name) }, (torrent: any) => {
-          console.log(`Resumed torrent: ${task.name} (${torrent.infoHash})`);
-        });
+        addTorrentToClient(task);
       } catch (err) {
         console.error(`Failed to resume torrent ${task.name}:`, err);
       }
@@ -157,18 +381,85 @@ setTimeout(async () => {
 
 // Local storage paths
 const DATA_DIR = path.join(process.cwd(), 'data');
+const BOOKARR_DIR = path.join(DATA_DIR, 'bookarr');
+const STORAGE_DIRS = {
+    download: path.join(BOOKARR_DIR, 'download'),
+    audiobooks: path.join(BOOKARR_DIR, 'audiobooks'),
+    ebooks: path.join(BOOKARR_DIR, 'ebooks')
+};
 const DB_FILE = path.join(DATA_DIR, 'db.json');
 
-// Ensure data folder exists
+// Ensure data folder and bookarr structure exists
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
+}
+if (!fs.existsSync(BOOKARR_DIR)) {
+  fs.mkdirSync(BOOKARR_DIR, { recursive: true });
+}
+Object.values(STORAGE_DIRS).forEach(dir => {
+    if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+    }
+});
+
+/**
+ * Moves a downloaded file or directory into the organized bookarr hierarchy
+ */
+function finalizeFileLocation(sourcePath: string, type: 'ebook' | 'audiobook'): string {
+    const targetDir = type === 'audiobook' ? STORAGE_DIRS.audiobooks : STORAGE_DIRS.ebooks;
+    const itemName = path.basename(sourcePath);
+    const targetPath = path.join(targetDir, itemName);
+
+    if (!fs.existsSync(sourcePath)) return sourcePath;
+    if (sourcePath === targetPath) return sourcePath;
+
+    try {
+        console.log(`[STORAGE] Moving finished item: ${itemName} -> ${type} staging`);
+        
+        // Ensure destination dir
+        if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
+
+        // Simple move
+        fs.renameSync(sourcePath, targetPath);
+        return targetPath;
+    } catch (e: any) {
+        console.warn(`[STORAGE] Rename failed (${e.message}), trying copy fallback...`);
+        try {
+             // Fallback for cross-device or permission issues if any
+             if (fs.lstatSync(sourcePath).isDirectory()) {
+                 // For directories, we'd need recursive copy, but in this environment rename usually works.
+                 // If it fails, we keep it in download for now to avoid complexity of recursive copy on server.
+                 return sourcePath;
+             }
+             fs.copyFileSync(sourcePath, targetPath);
+             fs.unlinkSync(sourcePath);
+             return targetPath;
+        } catch(ee) {
+             console.error('[STORAGE] Finalization failed entirely:', ee);
+             return sourcePath;
+        }
+    }
 }
 
 // Initial Book Data to seed the local database
 const INITIAL_BOOKS: Book[] = [];
 
+let memoryDB: any = null;
+
+// Save Db helper
+const saveDB = (data: any) => {
+  try {
+    memoryDB = data;
+    fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf-8');
+  } catch (e) {
+    console.error('Error saving DB', e);
+  }
+};
+
 // Load Db helper
 const loadDB = () => {
+  if (memoryDB) return memoryDB;
+
   try {
     if (fs.existsSync(DB_FILE)) {
       const content = fs.readFileSync(DB_FILE, 'utf-8');
@@ -176,6 +467,7 @@ const loadDB = () => {
       
       if (!db.indexers) db.indexers = [];
       if (!db.config) db.config = { webtorEnabled: true, localDownloadPath: '/data/downloads/bookrr' };
+      if (!db.config.deletedIndexerNames) db.config.deletedIndexerNames = [];
       if (!db.logs) db.logs = [];
       if (!db.torrentTasks) db.torrentTasks = [];
       if (!db.books) db.books = [];
@@ -189,16 +481,18 @@ const loadDB = () => {
         { id: '5', name: 'Kickass', url: 'https://kickasst.net', apiKey: '', enabled: true, type: 'native' },
         { id: '6', name: 'The Pirate Bay', url: 'https://thepiratebay.org', apiKey: '', enabled: true, type: 'native' },
         { id: '7', name: 'SolidTorrents', url: 'https://solidtorrents.to', apiKey: '', enabled: true, type: 'native' },
-        { id: '8', name: 'LibGen', url: 'https://libgen.is', apiKey: '', enabled: true, type: 'native' }
+        { id: '8', name: 'LibGen', url: 'https://libgen.is', apiKey: '', enabled: true, type: 'native' },
+        { id: '9', name: 'Torlock', url: 'https://www.torlock.com', apiKey: '', enabled: true, type: 'native' }
       ];
 
       let changed = false;
       defaultIndexers.forEach(def => {
         const existing = db.indexers.find((i: any) => i.name === def.name);
-        if (!existing) {
+        const wasDeleted = db.config.deletedIndexerNames?.includes(def.name);
+        if (!existing && !wasDeleted) {
           db.indexers.push(def);
           changed = true;
-        } else if (existing.url !== def.url && (existing.url.includes('.lu') || existing.url.includes('.cm') || existing.url.includes('.so') || existing.url.includes('kickasstorrents.to'))) {
+        } else if (existing && existing.url !== def.url && (existing.url.includes('.lu') || existing.url.includes('.cm') || existing.url.includes('.so') || existing.url.includes('kickasstorrents.to'))) {
           // Force update for broken default mirrors
           existing.url = def.url;
           changed = true;
@@ -209,6 +503,7 @@ const loadDB = () => {
         saveDB(db);
       }
 
+      memoryDB = db;
       return db;
     }
   } catch (e) {
@@ -229,7 +524,8 @@ const loadDB = () => {
     ] as MessageLog[],
     config: {
       webtorEnabled: true,
-      localDownloadPath: '/data/downloads/bookrr'
+      localDownloadPath: '/data/downloads/bookrr',
+      deletedIndexerNames: []
     } as BookrrConfig,
     indexers: [
       { id: '1', name: '1337x', url: 'https://1337x.to', apiKey: '', enabled: true, type: 'native' },
@@ -239,21 +535,14 @@ const loadDB = () => {
       { id: '5', name: 'Kickass', url: 'https://kickasst.net', apiKey: '', enabled: true, type: 'native' },
       { id: '6', name: 'The Pirate Bay', url: 'https://thepiratebay.org', apiKey: '', enabled: true, type: 'native' },
       { id: '7', name: 'SolidTorrents', url: 'https://solidtorrents.to', apiKey: '', enabled: true, type: 'native' },
-      { id: '8', name: 'LibGen', url: 'https://libgen.is', apiKey: '', enabled: true, type: 'native' }
+      { id: '8', name: 'LibGen', url: 'https://libgen.is', apiKey: '', enabled: true, type: 'native' },
+      { id: '9', name: 'Torlock', url: 'https://www.torlock.com', apiKey: '', enabled: true, type: 'native' }
     ] as IndexerSettings[]
   };
 
+  memoryDB = defaultDB;
   saveDB(defaultDB);
   return defaultDB;
-};
-
-// Save Db helper
-const saveDB = (data: any) => {
-  try {
-    fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf-8');
-  } catch (e) {
-    console.error('Error saving DB', e);
-  }
 };
 
 async function resolveLibGenDownload(mirrorUrl: string): Promise<string> {
@@ -263,7 +552,7 @@ async function resolveLibGenDownload(mirrorUrl: string): Promise<string> {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
       },
-      timeout: 10000
+      timeout: 120000
     });
     const $ = cheerio.load(response.data);
     // On library.lol, the download link is usually the first link inside h2#download or similar, or just text "GET"
@@ -277,17 +566,39 @@ async function resolveLibGenDownload(mirrorUrl: string): Promise<string> {
   return '';
 }
 
-async function downloadDirectFile(url: string, destination: string): Promise<boolean> {
+async function downloadDirectFile(url: string, destination: string, taskId?: string): Promise<boolean> {
   try {
     const response = await axios({
       method: 'get',
       url: url,
       responseType: 'stream',
       httpsAgent: agent,
-      timeout: 30000,
+      timeout: 120000,
       headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
       }
+    });
+
+    const totalLength = response.headers['content-length'] ? parseInt(String(response.headers['content-length']), 10) : 0;
+    let downloadedLength = 0;
+    const startTime = Date.now();
+
+    response.data.on('data', (chunk: Buffer) => {
+        downloadedLength += chunk.length;
+        if (taskId && totalLength > 0) {
+           const db = loadDB();
+           const task = db.torrentTasks.find((t: any) => t.id === taskId);
+           if (task && task.status === 'downloading') {
+               task.progress = Math.round((downloadedLength / totalLength) * 100);
+               const elapsedS = Math.max(0.1, (Date.now() - startTime) / 1000);
+               const speedBps = downloadedLength / elapsedS;
+               task.downloadSpeed = (speedBps / (1024 * 1024)).toFixed(1) + ' MB/s';
+               const remainingBytes = totalLength - downloadedLength;
+               const etaS = Math.round(remainingBytes / speedBps);
+               task.eta = isFinite(etaS) && etaS > 0 ? `${etaS}s` : 'Done';
+               saveDB(db);
+           }
+        }
     });
 
     const writer = fs.createWriteStream(destination);
@@ -420,7 +731,7 @@ async function enrichTorrentTaskWithMetadata(torrentTitle: string, isAudiobook: 
 
     if (cleanSearchQuery.length > 2) {
       const olUrl = `https://openlibrary.org/search.json?q=${encodeURIComponent(cleanSearchQuery)}&limit=1`;
-      const res = await axios.get(olUrl, { timeout: 5000 });
+      const res = await fetchWithRetry(olUrl, { timeout: OPENLIBRARY_TIMEOUT });
       if (res.status === 200) {
         const olData = res.data;
         if (olData && olData.docs && olData.docs.length > 0) {
@@ -481,7 +792,11 @@ setInterval(async () => {
 
   const updatedTasks = [];
   for (let task of db.torrentTasks) {
-    if (task.status === 'downloading') {
+    if (!task.addedAt) {
+      task.addedAt = new Date().toISOString();
+      updated = true;
+    }
+    if (task.status === 'downloading' || task.status === 'connecting' || task.status === 'stalled') {
       updated = true;
       let nextProgress = task.progress;
       let downloadSpeed = task.downloadSpeed;
@@ -489,27 +804,45 @@ setInterval(async () => {
       let eta = task.eta;
       let status = task.status;
       let files = task.files;
+      const magnet = injectTrackers(task.magnetLink);
 
       // Try to find matching active torrent in WebTorrent client
       const activeTorrent = client.torrents.find((t: any) => 
-        t.magnetLink === task.magnetLink || t.infoHash === task.infoHash
+        (t.magnetURI && t.magnetURI === magnet) || 
+        (t.infoHash && t.infoHash === task.infoHash) ||
+        (task.magnetLink && task.magnetLink.includes(t.infoHash))
       );
 
       if (activeTorrent) {
+        if (activeTorrent.ready) {
+           if (status === 'connecting') status = 'downloading';
+        }
+
         // Use real stats from WebTorrent
         nextProgress = Math.round(activeTorrent.progress * 100);
-        downloadSpeed = (activeTorrent.downloadSpeed / (1024 * 1024)).toFixed(1) + ' MB/s';
+        if (activeTorrent.downloadSpeed > 1024 * 1024) {
+          downloadSpeed = (activeTorrent.downloadSpeed / (1024 * 1024)).toFixed(1) + ' MB/s';
+        } else {
+          downloadSpeed = (activeTorrent.downloadSpeed / 1024).toFixed(1) + ' KB/s';
+        }
         uploadSpeed = (activeTorrent.uploadSpeed / 1024).toFixed(0) + ' KB/s';
-        const numPeers = activeTorrent.numPeers;
+        const currentPeers = activeTorrent.numPeers;
+        task.numPeers = currentPeers;
         
         const tr = activeTorrent.timeRemaining;
-        if (tr && isFinite(tr)) {
+        if (activeTorrent.downloadSpeed > 0 && tr && isFinite(tr)) {
           const seconds = Math.floor((tr / 1000) % 60);
           const minutes = Math.floor((tr / (1000 * 60)) % 60);
           const hours = Math.floor((tr / (1000 * 60 * 60)));
           eta = hours > 0 ? `${hours}h ${minutes}m` : (minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`);
         } else {
-          eta = 'Calculating...';
+          if (activeTorrent.progress >= 1) {
+            eta = 'Done';
+          } else if (currentPeers > 0) {
+            eta = 'Waiting for pieces...';
+          } else {
+            eta = 'Finding peers...';
+          }
         }
 
         // Update file-level progress too
@@ -525,8 +858,66 @@ setInterval(async () => {
           status = 'completed';
           downloadSpeed = '0 KB/s';
           eta = 'Done';
+        } else {
+           // Improved stall handling: also handle 'connecting' state hanging with metadata missing
+           const now = Date.now();
+           
+           // A torrent is truly stalled if:
+           // 1. No speed and No peers for 1.5 minutes
+           // 2. Or No speed but HAS peers for 3 minutes (maybe slow seeds or choked)
+           // 3. Or stuck "connecting" for 3 minutes
+           const isStalled = (activeTorrent.downloadSpeed <= 0 && activeTorrent.numPeers === 0 && now - (task.zeroSpeedSince || now) > 90000) || 
+                            (activeTorrent.downloadSpeed <= 0 && activeTorrent.numPeers > 0 && now - (task.zeroSpeedSince || now) > 180000) ||
+                            (status === 'connecting' && now - (task.addedAt ? new Date(task.addedAt).getTime() : now) > 180000);
+           
+           if (isStalled) {
+              if (task.status !== 'stalled') {
+                  status = 'stalled';
+                  task.zeroSpeedSince = now;
+                  
+                  // Periodic re-announce while stalled (every 2.5 minutes)
+                  const lastAnnounce = task.lastAnnounceAt || 0;
+                  if (now - lastAnnounce > 150000) {
+                      task.lastAnnounceAt = now;
+                      try {
+                        PUBLIC_TRACKERS.forEach(tr => {
+                            activeTorrent.announce(tr);
+                        });
+                        console.log(`[WEBTOR] Periodic re-announce for stalled torrent: ${task.name}`);
+                      } catch(e) {}
+                  }
+              }
+              
+              // Only restart if stalled for a significant amount of time (8 mins total or 3 mins in stalled status)
+              if (now - (task.zeroSpeedSince || now) > 180000) {
+                  const restarted = restartTorrent(task);
+                  if (restarted) {
+                      task.zeroSpeedSince = now;
+                      db.logs.push({
+                          id: `log-${now}`,
+                          timestamp: new Date().toISOString(),
+                          level: 'warn',
+                          source: 'webtor',
+                          message: `Torrent [${task.name}] stalled. Attempting tracker re-announce and restart (${task.retryCount || 1}/${MAX_RETRY_ATTEMPTS}).`
+                      });
+                  }
+              }
+           } else if (activeTorrent.downloadSpeed <= 0) {
+              if (!task.zeroSpeedSince) {
+                  task.zeroSpeedSince = now;
+              }
+           } else {
+               task.zeroSpeedSince = undefined;
+               if (status === 'stalled') status = 'downloading';
+           }
         }
-      } else if (!task.magnetLink?.startsWith('magnet:')) {
+      } else {
+        // Torrent is in downloading status but not active in client -> add it
+        console.log(`Adding missing torrent: ${task.name}`);
+        addTorrentToClient(task);
+      }
+
+      if (!task.magnetLink?.startsWith('magnet:')) {
         // Fallback for direct downloads (already handled by their own async flows, 
         // but this loop handles the task object persistence)
         nextProgress = task.progress; 
@@ -604,27 +995,37 @@ setInterval(async () => {
           console.error('Error finding files for completed task:', err);
         }
 
+        let fileMetadata: Partial<Book> = {};
+        if (foundPath) {
+          try {
+            fileMetadata = await getMetadataFromFile(foundPath);
+          } catch (e) {
+            console.error('Error scaping metadata from file:', e);
+          }
+        }
+
         let newBook: Book;
         if (task.enrichedBook) {
           newBook = {
             ...task.enrichedBook,
+            ...fileMetadata,
             id: `book-${Date.now()}`,
             filePath: foundPath || task.enrichedBook.filePath || '',
             fileUrl: foundUrl || task.enrichedBook.fileUrl || '',
             chapters: realChapters.length > 0 ? realChapters : (task.enrichedBook.chapters || []),
-            duration: totalDuration || task.enrichedBook.duration
+            duration: totalDuration || task.enrichedBook.duration || fileMetadata.duration
           };
         } else {
           newBook = {
             id: `book-${Date.now()}`,
-            title: task.name,
-            author: 'Unknown Author',
+            title: fileMetadata.title || task.name,
+            author: fileMetadata.author || 'Unknown Author',
             coverUrl: isAudio 
               ? 'https://images.unsplash.com/photo-1478737270239-2f02b77fc618?auto=format&fit=crop&q=80&w=400'
               : 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?auto=format&fit=crop&q=80&w=400',
             type: isAudio ? 'audiobook' : 'ebook',
-            description: `Downloaded from indexer ${task.indexer}.`,
-            genres: [],
+            description: fileMetadata.description || `Downloaded from indexer ${task.indexer}.`,
+            genres: fileMetadata.genres || [],
             progress: 0,
             currentTime: 0,
             isDownloaded: true,
@@ -640,7 +1041,14 @@ setInterval(async () => {
         // Ensure new book has some fileUrl if possible, by guessing based on task name
         if (!newBook.fileUrl && task.files && task.files.length > 0) {
            newBook.fileUrl = `/api/files/${task.files[0].name}`;
-           newBook.filePath = newBook.filePath || `/data/downloads/${task.name}/${task.files[0].name}`;
+           newBook.filePath = newBook.filePath || path.join(STORAGE_DIRS.download, task.name, task.files[0].name);
+        }
+
+        // Finalize storage location!
+        if (newBook.filePath && fs.existsSync(newBook.filePath)) {
+            const finalPath = finalizeFileLocation(newBook.filePath, newBook.type);
+            newBook.filePath = finalPath;
+            newBook.fileUrl = `/api/files/${path.basename(finalPath)}`;
         }
 
         db.books.push(newBook);
@@ -802,6 +1210,20 @@ app.post('/api/scan-library', (req, res) => {
   });
 });
 
+app.post('/api/logs', (req, res) => {
+  const db = loadDB();
+  const log = {
+    id: `log-${Date.now()}`,
+    timestamp: new Date().toISOString(),
+    level: req.body.level || 'info',
+    source: req.body.source || 'client',
+    message: req.body.message
+  };
+  db.logs.push(log);
+  saveDB(db);
+  res.json({ success: true, log });
+});
+
 app.get('/api/books', (req, res) => {
   const db = loadDB();
   
@@ -932,9 +1354,10 @@ app.get('/api/metadata', async (req, res) => {
     const resultId = (req.query.resultId || '').toString();
     const title = (req.query.title || '').toString();
     const type = (req.query.type || 'ebook') as 'ebook' | 'audiobook';
+    const returnAll = req.query.all === 'true';
     
     try {
-        const enriched = await enrichMetadata({ id: resultId, title, type } as any);
+        const enriched = await enrichMetadata({ id: resultId, title, type } as any, returnAll);
         return res.json(enriched);
     } catch (err: any) {
         return res.status(500).json({ error: 'Failed to enrich metadata' });
@@ -965,60 +1388,92 @@ app.get('/api/torrents/inspect', async (req, res) => {
   }
 
   try {
-    const infoTask = client.add(magnet, { deselect: true });
+    const enhancedMagnet = injectTrackers(magnet);
+    const infoHash = extractInfoHash(enhancedMagnet);
     
-    // Timeout after 10 seconds if metadata doesn't load
-    const timeout = setTimeout(() => {
-      try { client.remove(magnet); } catch(e) {}
-      res.status(408).json({ error: 'Metadata fetch timed out. Indexer might be slow.' });
-    }, 15000);
+    // Check if we already have it in the client
+    let infoTask = client.get(enhancedMagnet) || (infoHash ? client.get(infoHash) : null);
+    
+    if (!infoTask) {
+      infoTask = client.add(enhancedMagnet, { 
+        deselect: true,
+        announce: PUBLIC_TRACKERS
+      });
+    }
+    
+    const cleanup = () => {
+      if (infoTask && !loadDB().torrentTasks.find(t => t.infoHash === infoTask.infoHash)) {
+        try { client.remove(infoTask.infoHash); } catch(e) {}
+      }
+    };
 
-    infoTask.on('metadata', () => {
+    // Timeout after 90 seconds if metadata doesn't load
+    const timeout = setTimeout(() => {
+      res.status(408).json({ error: 'Metadata fetch timed out. Indexer might be slow.' });
+      cleanup();
+    }, 90000);
+
+    const onMetadata = () => {
       clearTimeout(timeout);
-      const files = infoTask.files.map(f => ({
+      const files = infoTask.files.map((f: any) => ({
         name: f.name,
         size: formatBytes(f.length),
         path: f.path
       }));
-      // We don't want to keep it seeding/downloading yet
-      try { client.remove(magnet); } catch(e) {}
       res.json({ name: infoTask.name, files });
-    });
-  } catch (err) {
-    console.error('Inspection failed:', err);
-    res.status(500).json({ error: 'Failed to inspect torrent' });
+      cleanup();
+    };
+
+    if (infoTask.ready) {
+      onMetadata();
+    } else {
+      infoTask.once('metadata', onMetadata);
+      infoTask.once('error', (err: any) => {
+        clearTimeout(timeout);
+        res.status(500).json({ error: err.message });
+        cleanup();
+      });
+    }
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
   }
 });
 
 app.post('/api/torrents', async (req, res) => {
-  const db = loadDB();
-  const { title, magnetLink, downloadUrl, size, indexer, type } = req.body;
+  try {
+    const db = loadDB();
+    const { title, magnetLink, downloadUrl, size, indexer, type } = req.body;
+    
+    if (!title) {
+        return res.status(400).json({ error: 'Title is required' });
+    }
 
-  // Check if already downloading (or completed)
-  const exists = db.torrentTasks.find((t: TorrentTask) => t.magnetLink === (magnetLink || downloadUrl));
-  if (exists) {
-    return res.json(exists);
-  }
+    const safeTitle = title || 'Unknown Title';
 
-  const isAudio = type === 'audiobook' || title.toLowerCase().includes('audiobook') || title.toLowerCase().includes('mp3') || title.toLowerCase().includes('m4b');
-  const downloadsDir = path.join(DATA_DIR, 'downloads');
-  if (!fs.existsSync(downloadsDir)) fs.mkdirSync(downloadsDir, { recursive: true });
+    // Check if already downloading (or completed)
+    const exists = db.torrentTasks.find((t: TorrentTask) => t.magnetLink === (magnetLink || downloadUrl));
+    if (exists) {
+      return res.json(exists);
+    }
 
-  // Handle Direct Download (e.g. LibGen)
-  if (downloadUrl) {
-    const newTask: TorrentTask = {
-        id: `task-${Date.now()}`,
-        name: title,
-        size: size || '2.1 MB',
-        progress: 0,
-        downloadSpeed: 'Calculating...',
-        uploadSpeed: '0 KB/s',
-        eta: 'Calculating...',
-        status: 'downloading',
-        magnetLink: downloadUrl, // Using this as unique key
-        indexer: indexer || 'Direct Download',
-        files: [{ name: title, size: size || '2.1 MB', progress: 0, type: isAudio ? 'audio' : 'ebook' }]
-    };
+    const isAudio = type === 'audiobook' || safeTitle.toLowerCase().includes('audiobook') || safeTitle.toLowerCase().includes('mp3') || safeTitle.toLowerCase().includes('m4b');
+    
+    // Handle Direct Download (e.g. LibGen)
+    if (downloadUrl) {
+      const newTask: TorrentTask = {
+          id: `task-${Date.now()}`,
+          name: safeTitle,
+          size: size || '2.1 MB',
+          progress: 0,
+          downloadSpeed: 'Calculating...',
+          uploadSpeed: '0 KB/s',
+          eta: 'Calculating...',
+          status: 'downloading',
+          magnetLink: downloadUrl, // Using this as unique key
+          indexer: indexer || 'Direct Download',
+          files: [{ name: safeTitle, size: size || '2.1 MB', progress: 0, type: isAudio ? 'audio' : 'ebook' }],
+          addedAt: new Date().toISOString()
+      };
 
     db.torrentTasks.push(newTask);
     saveDB(db);
@@ -1027,18 +1482,21 @@ app.post('/api/torrents', async (req, res) => {
     // Start download in background
     (async () => {
         try {
-            console.log(`Resolving DDL for: ${title}`);
+            console.log(`Resolving DDL for: ${safeTitle}`);
             const finalUrl = await resolveLibGenDownload(downloadUrl);
             if (!finalUrl) throw new Error('Could not resolve download link');
 
-            const ext = title.match(/\[(.*)\]$/)?.[1]?.toLowerCase() || (isAudio ? 'mp3' : 'epub');
-            const fileName = `${title.replace(/[^a-z0-9]/gi, '_')}.${ext}`;
-            const dest = path.join(downloadsDir, fileName);
+            const ext = safeTitle.match(/\[(.*)\]$/)?.[1]?.toLowerCase() || (isAudio ? 'mp3' : 'epub');
+            const fileName = `${safeTitle.replace(/[^a-z0-9]/gi, '_')}.${ext}`;
+            const dest = path.join(STORAGE_DIRS.download, fileName);
             
             console.log(`Downloading real file to: ${dest}`);
-            const success = await downloadDirectFile(finalUrl, dest);
+            const success = await downloadDirectFile(finalUrl, dest, newTask.id);
             
             if (success) {
+                // Move to organized storage
+                const finalDest = finalizeFileLocation(dest, isAudio ? 'audiobook' : 'ebook');
+
                 const innerDb = loadDB();
                 const task = innerDb.torrentTasks.find((t: any) => t.id === newTask.id);
                 if (task) {
@@ -1046,29 +1504,30 @@ app.post('/api/torrents', async (req, res) => {
                     task.status = 'completed';
                     task.downloadSpeed = '0 KB/s';
                     
-                    const enrichedBook = await enrichTorrentTaskWithMetadata(title, isAudio, size, indexer);
+                    const enrichedBook = await enrichTorrentTaskWithMetadata(safeTitle, isAudio, size, indexer);
                     
                     let realChapters = [];
-                    if (!isAudio && dest.endsWith('.epub')) {
-                        console.log(`Extracting text from real file: ${dest}`);
-                        realChapters = await extractEpubContent(dest);
+                    if (!isAudio && finalDest.endsWith('.epub')) {
+                        console.log(`Extracting text from real file: ${finalDest}`);
+                        realChapters = await extractEpubContent(finalDest);
                     }
 
-                    const newBook: Book = {
+                    const book: Book = {
                         ...enrichedBook,
                         id: `book-${Date.now()}`,
                         isDownloaded: true,
-                        filePath: dest,
-                        fileUrl: `/api/files/${fileName}`,
-                        chapters: realChapters.length > 0 ? realChapters : enrichedBook.chapters
+                        filePath: finalDest,
+                        fileUrl: `/api/files/${path.basename(finalDest)}`,
+                        chapters: realChapters.length > 0 ? realChapters : (enrichedBook.chapters || []),
+                        addedAt: new Date().toISOString()
                     };
-                    innerDb.books.push(newBook);
+                    innerDb.books.push(book);
                     innerDb.logs.push({
                         id: `log-${Date.now()}`,
                         timestamp: new Date().toISOString(),
                         level: 'success',
                         source: 'server',
-                        message: `Direct Download [${title}] completed and verified. File saved locally.`
+                        message: `Direct Download [${safeTitle}] completed and organized into ${book.type} repository.`
                     });
                     saveDB(innerDb);
                 }
@@ -1086,7 +1545,7 @@ app.post('/api/torrents', async (req, res) => {
                     timestamp: new Date().toISOString(),
                     level: 'error',
                     source: 'server',
-                    message: `Direct download failed for [${title}]: ${err.message}`
+                    message: `Direct download failed for [${safeTitle}]: ${err.message}`
                 });
                 saveDB(innerDb);
             }
@@ -1095,46 +1554,9 @@ app.post('/api/torrents', async (req, res) => {
     return;
   }
 
-  // Real Torrent Initiation
-  try {
-    const downloadBase = path.join(DATA_DIR, 'downloads');
-    client.add(magnetLink, { path: path.join(downloadBase, title) }, async (torrent: any) => {
-      console.log('Client is downloading:', torrent.infoHash);
-      
-      const db = loadDB();
-      const task = db.torrentTasks.find((t: any) => t.magnetLink === magnetLink);
-      if (task) {
-        task.infoHash = torrent.infoHash;
-        // Pre-populate files list from real metadata
-        task.files = torrent.files.map((f: any) => ({
-          name: f.name,
-          size: (f.length / (1024 * 1024)).toFixed(1) + ' MB',
-          progress: 0,
-          type: f.name.toLowerCase().endsWith('.mp3') ? 'audio' : (f.name.toLowerCase().endsWith('.epub') ? 'ebook' : 'other')
-        }));
-        saveDB(db);
-      }
-
-      torrent.on('error', (err: any) => {
-        console.error('Torrent internal error:', err);
-      });
-    });
-  } catch (err) {
-    console.error('Failed to add torrent:', err);
-    return res.status(400).json({ error: 'Invalid magnet link' });
-  }
-
-  // Launch metadata and generative content enrichment asynchronously
-  let enrichedBook: Book | undefined;
-  try {
-    enrichedBook = await enrichTorrentTaskWithMetadata(title, isAudio, size || 'Calculating...', indexer || 'Bookrr Indexer');
-  } catch (err) {
-    console.error('Failed to pre-enrich torrent metadata:', err);
-  }
-
   const newTask: TorrentTask = {
     id: `task-${Date.now()}`,
-    name: title,
+    name: safeTitle,
     size: size || 'Calculating...',
     progress: 0,
     downloadSpeed: '0 KB/s',
@@ -1143,6 +1565,7 @@ app.post('/api/torrents', async (req, res) => {
     status: 'downloading',
     magnetLink: magnetLink,
     indexer: indexer || 'Bookrr (Native Aggregator)',
+    addedAt: new Date().toISOString(),
     files: [
       {
         name: isAudio ? 'Audio Content' : 'E-Book Content',
@@ -1150,8 +1573,7 @@ app.post('/api/torrents', async (req, res) => {
         progress: 0,
         type: isAudio ? 'audio' : 'ebook'
       }
-    ],
-    enrichedBook
+    ]
   };
 
   db.torrentTasks.push(newTask);
@@ -1160,11 +1582,61 @@ app.post('/api/torrents', async (req, res) => {
     timestamp: new Date().toISOString(),
     level: 'info',
     source: 'webtor',
-    message: `Initiated real torrent stream: [${title}] via WebTorrent client.`
+    message: `Initiated real torrent stream: [${safeTitle}] via WebTorrent client.`
   });
-
   saveDB(db);
   res.json(newTask);
+
+  // Real Torrent Initiation
+  try {
+    const torrent = addTorrentToClient(newTask);
+      if (torrent) {
+        const updateTaskWithMetadata = () => {
+          const innerDb = loadDB();
+          const t = innerDb.torrentTasks.find((tt: any) => tt.id === newTask.id);
+          if (t) {
+            t.infoHash = torrent.infoHash;
+            t.name = torrent.name;
+            t.files = torrent.files.map((f: any) => ({
+              name: f.name,
+              size: (f.length / (1024 * 1024)).toFixed(1) + ' MB',
+              progress: 0,
+              type: f.name.toLowerCase().endsWith('.mp3') || f.name.toLowerCase().endsWith('.m4b') ? 'audio' : (f.name.toLowerCase().endsWith('.epub') ? 'ebook' : 'other')
+            }));
+            saveDB(innerDb);
+          }
+        };
+
+        if (torrent.ready) {
+          updateTaskWithMetadata();
+        } else {
+          torrent.on('metadata', updateTaskWithMetadata);
+          torrent.on('ready', updateTaskWithMetadata);
+        }
+      }
+
+  } catch (err) {
+    console.error('Failed to add torrent:', err);
+  }
+
+  // Launch metadata and generative content enrichment asynchronously
+  (async () => {
+    try {
+      const enrichedBook = await enrichTorrentTaskWithMetadata(safeTitle, isAudio, size || 'Calculating...', indexer || 'Bookrr Indexer');
+      const enrichDb = loadDB();
+      const enrichTask = enrichDb.torrentTasks.find((t: any) => t.id === newTask.id);
+      if (enrichTask) {
+        enrichTask.enrichedBook = enrichedBook;
+        saveDB(enrichDb);
+      }
+    } catch (err) {
+      console.error('Failed to pre-enrich torrent metadata:', err);
+    }
+  })();
+  } catch (err) {
+    console.error('API Torrents POST Error:', err);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
 });
 
 // Delete torrent task
@@ -1217,28 +1689,51 @@ app.post('/api/books/:id/process', async (req, res) => {
   }
 });
 
+app.post('/api/torrents/:id/retry', (req, res) => {
+    const db = loadDB();
+    const task = db.torrentTasks.find((t: TorrentTask) => t.id === req.params.id);
+    if (!task) return res.status(404).json({ error: 'Task not found' });
+    
+    // Reset retry count manually if requested
+    task.retryCount = 0;
+    task.status = 'connecting';
+    saveDB(db);
+
+    restartTorrent(task);
+    res.json({ success: true, message: 'Retry initiated' });
+});
+
 // route to serve downloaded files
 app.get('/api/files/:name', (req, res) => {
     const fileName = req.params.name;
-    const downloadsDir = path.join(DATA_DIR, 'downloads');
     
-    // Check root base first
-    const rootPath = path.join(downloadsDir, fileName);
-    if (fs.existsSync(rootPath) && fs.lstatSync(rootPath).isFile()) {
-        res.setHeader('Content-Type', fileName.endsWith('.mp3') ? 'audio/mpeg' : 'application/epub+zip');
-        res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-        res.setHeader('Accept-Ranges', 'bytes');
-        return res.sendFile(rootPath);
+    // Check all managed directories
+    const searchDirs = [
+        STORAGE_DIRS.audiobooks,
+        STORAGE_DIRS.ebooks,
+        STORAGE_DIRS.download,
+        DATA_DIR // Legacy fallback
+    ];
+
+    // Check root bases first for performance
+    for (const dir of searchDirs) {
+        const rootPath = path.join(dir, fileName);
+        if (fs.existsSync(rootPath) && fs.lstatSync(rootPath).isFile()) {
+            const isAudio = fileName.endsWith('.mp3') || fileName.endsWith('.m4b');
+            res.setHeader('Content-Type', isAudio ? 'audio/mpeg' : 'application/epub+zip');
+            res.setHeader('Accept-Ranges', 'bytes');
+            return res.sendFile(rootPath);
+        }
     }
-    
-    // Recursive search
-    const findFile = (dir: string): string | null => {
+
+    // Recursive search fallback
+    const findFileRecursive = (dir: string): string | null => {
         if (!fs.existsSync(dir)) return null;
         const items = fs.readdirSync(dir);
         for (const item of items) {
             const fullPath = path.join(dir, item);
             if (fs.lstatSync(fullPath).isDirectory()) {
-                const found = findFile(fullPath);
+                const found = findFileRecursive(fullPath);
                 if (found) return found;
             } else if (item === fileName) {
                 return fullPath;
@@ -1248,9 +1743,15 @@ app.get('/api/files/:name', (req, res) => {
     };
 
     try {
-        const foundPath = findFile(downloadsDir);
+        let foundPath: string | null = null;
+        for (const dir of searchDirs) {
+            foundPath = findFileRecursive(dir);
+            if (foundPath) break;
+        }
+
         if (foundPath) {
-            res.setHeader('Content-Type', fileName.endsWith('.mp3') ? 'audio/mpeg' : 'application/epub+zip');
+            const isAudio = fileName.endsWith('.mp3') || fileName.endsWith('.m4b');
+            res.setHeader('Content-Type', isAudio ? 'audio/mpeg' : 'application/epub+zip');
             res.setHeader('Accept-Ranges', 'bytes');
             res.sendFile(foundPath);
         } else {
@@ -1259,6 +1760,74 @@ app.get('/api/files/:name', (req, res) => {
     } catch (err) {
         console.error('File search error:', err);
         res.status(500).send('Error searching filesystem');
+    }
+});
+
+app.post('/api/books/:id/organize', (req, res) => {
+    const db = loadDB();
+    const book = db.books.find((b: Book) => b.id === req.params.id);
+    if (!book) return res.status(404).json({ error: 'Book not found' });
+    
+    if (!book.filePath || !fs.existsSync(book.filePath)) {
+        return res.status(400).json({ error: 'Source file not found on disk' });
+    }
+
+    const finalPath = finalizeFileLocation(book.filePath, book.type);
+    if (finalPath !== book.filePath) {
+        book.filePath = finalPath;
+        book.fileUrl = `/api/files/${path.basename(finalPath)}`;
+        
+        db.logs.push({
+            id: `log-${Date.now()}`,
+            timestamp: new Date().toISOString(),
+            level: 'info',
+            source: 'server',
+            message: `Manual organization complete: ${book.title} moved to staged ${book.type} repository.`
+        });
+        saveDB(db);
+        return res.json({ success: true, filePath: finalPath });
+    }
+    
+    res.json({ success: true, message: 'Already organized', filePath: finalPath });
+});
+
+app.get('/api/system/storage', (req, res) => {
+    res.json({
+        success: true,
+        baseDir: BOOKARR_DIR,
+        paths: STORAGE_DIRS,
+        dataDir: DATA_DIR
+    });
+});
+
+// 5. File Upload API
+const uploadStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, STORAGE_DIRS.download);
+    },
+    filename: (req, file, cb) => {
+        const safeName = file.originalname.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+        cb(null, `${Date.now()}-${safeName}`);
+    }
+});
+const upload = multer({ storage: uploadStorage });
+
+app.post('/api/upload', upload.single('file'), async (req, res) => {
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+    
+    try {
+        const type = req.body.type === 'audiobook' ? 'audiobook' : 'ebook';
+        const finalPath = finalizeFileLocation(req.file.path, type);
+        
+        res.json({ 
+            success: true, 
+            filePath: finalPath,
+            fileName: path.basename(finalPath),
+            fileUrl: `/api/files/${path.basename(finalPath)}`
+        });
+    } catch (err: any) {
+        console.error('Upload processing failed:', err);
+        res.status(500).json({ error: 'Failed to process uploaded file' });
     }
 });
 
