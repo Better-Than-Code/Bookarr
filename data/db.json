@@ -1,0 +1,35 @@
+{
+  "books": [],
+  "torrentTasks": [],
+  "logs": [
+    {
+      "id": "log-1",
+      "timestamp": "2026-05-23T20:00:00.000Z",
+      "level": "success",
+      "source": "server",
+      "message": "Bookrr native media suite initialized successfully."
+    }
+  ],
+  "config": {
+    "webtorEnabled": true,
+    "localDownloadPath": "/data/downloads/bookrr"
+  },
+  "indexers": [
+    {
+      "id": "1",
+      "name": "1337x",
+      "url": "https://1337x.to",
+      "apiKey": "",
+      "enabled": true,
+      "type": "native"
+    },
+    {
+      "id": "2",
+      "name": "LimeTorrents",
+      "url": "https://limetorrents.info",
+      "apiKey": "",
+      "enabled": true,
+      "type": "native"
+    }
+  ]
+}

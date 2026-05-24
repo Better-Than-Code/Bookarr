@@ -1,0 +1,8 @@
+{
+  "name": "Bookrr",
+  "description": "A fully integrated book and audiobook media server, searcher, and reader suite with native tracker aggregation and local library management.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
