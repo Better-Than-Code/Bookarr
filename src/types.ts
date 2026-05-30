@@ -22,7 +22,7 @@ export interface Book {
   title: string;
   author: string;
   coverUrl: string;
-  type: 'audiobook' | 'ebook';
+  type: "audiobook" | "ebook";
   description: string;
   publisher?: string;
   year?: string;
@@ -49,7 +49,14 @@ export interface TorrentTask {
   downloadSpeed: string; // e.g. "2.4 MB/s"
   uploadSpeed: string;
   eta: string;
-  status: 'downloading' | 'seeding' | 'completed' | 'paused' | 'stalled' | 'failed' | 'connecting';
+  status:
+    | "downloading"
+    | "seeding"
+    | "completed"
+    | "paused"
+    | "stalled"
+    | "failed"
+    | "connecting";
   magnetLink: string;
   infoHash?: string;
   numPeers?: number;
@@ -58,7 +65,7 @@ export interface TorrentTask {
     name: string;
     size: string;
     progress: number;
-    type: 'audio text image' | 'audio' | 'ebook' | 'other';
+    type: "audio text image" | "audio" | "ebook" | "other";
   }[];
   enrichedBook?: Book;
   zeroSpeedSince?: number; // timestamp in ms when speed became 0
@@ -77,7 +84,7 @@ export interface TorrentSearchResult {
   magnetLink: string;
   downloadUrl?: string; // Direct download link (e.g. LibGen)
   indexer: string;
-  type: 'ebook' | 'audiobook';
+  type: "ebook" | "audiobook";
   publishDate: string;
   error?: string;
 }
@@ -88,8 +95,8 @@ export interface IndexerSettings {
   url: string;
   apiKey: string;
   enabled: boolean;
-  type: 'torznab' | 'native';
-  status?: 'online' | 'offline' | 'unknown';
+  type: "torznab" | "native";
+  status?: "online" | "offline" | "unknown";
   lastChecked?: string;
   error?: string;
 }
@@ -103,7 +110,7 @@ export interface BookrrConfig {
 export interface MessageLog {
   id: string;
   timestamp: string;
-  level: 'info' | 'warn' | 'error' | 'success';
-  source: 'webtor' | 'server';
+  level: "info" | "warn" | "error" | "success";
+  source: "webtor" | "server";
   message: string;
 }

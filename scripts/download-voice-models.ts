@@ -31,7 +31,9 @@ const kokoroFiles = [
 
 const piperFiles = [
   'en/en_US/libritts/high/en_US-libritts-high.onnx',
-  'en/en_US/libritts/high/en_US-libritts-high.onnx.json'
+  'en/en_US/libritts/high/en_US-libritts-high.onnx.json',
+  'en/en_GB/vctk/medium/en_GB-vctk-medium.onnx',
+  'en/en_GB/vctk/medium/en_GB-vctk-medium.onnx.json'
 ];
 
 async function downloadFile(url: string, destPath: string) {

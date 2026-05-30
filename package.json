@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
-    "build": "tsx scripts/download-voice-models.ts && tsx scripts/generate-pwa-png-icons.ts && vite build && esbuild server.ts --bundle --platform=node --format=esm --packages=external --sourcemap --outfile=dist/server.js",
-    "start": "node dist/server.js",
+    "build": "tsx scripts/download-voice-models.ts && tsx scripts/generate-pwa-png-icons.ts && vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
+    "start": "node dist/server.cjs",
     "clean": "rm -rf dist server.js server.cjs",
     "lint": "tsc --noEmit"
   },

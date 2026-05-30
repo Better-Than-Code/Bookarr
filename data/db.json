@@ -391,7 +391,7 @@
       "duration": 3959.745306122449
     },
     {
-      "id": "book-scan-1780149137587-545",
+      "id": "book-scan-d6aa0579-f72b-406f-b6a1-3383f5b5f675",
       "title": "The Fountainhead - Part 10",
       "author": "Ayn Rand",
       "type": "audiobook",
@@ -2985,6 +2985,2582 @@
       "level": "success",
       "source": "browser_sync",
       "message": "Auto-Sync: Torrent download [The Fountainhead - Part 24] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780152801514",
+      "timestamp": "2026-05-30T14:53:21.514Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 01] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780152803054",
+      "timestamp": "2026-05-30T14:53:23.054Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 01] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780152803106",
+      "timestamp": "2026-05-30T14:53:23.106Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 02] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780152804032",
+      "timestamp": "2026-05-30T14:53:24.032Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 02] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780152804396",
+      "timestamp": "2026-05-30T14:53:24.397Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 03] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780152804589",
+      "timestamp": "2026-05-30T14:53:24.589Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 03] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780152805315",
+      "timestamp": "2026-05-30T14:53:25.315Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 02] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780152806294",
+      "timestamp": "2026-05-30T14:53:26.294Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 03] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780152806820",
+      "timestamp": "2026-05-30T14:53:26.820Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 03] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780154291973",
+      "timestamp": "2026-05-30T15:18:11.973Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 04] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780154291976",
+      "timestamp": "2026-05-30T15:18:11.976Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 05] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780154291978",
+      "timestamp": "2026-05-30T15:18:11.978Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 04] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780154291981",
+      "timestamp": "2026-05-30T15:18:11.981Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 05] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780154291984",
+      "timestamp": "2026-05-30T15:18:11.984Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 06] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780154291987",
+      "timestamp": "2026-05-30T15:18:11.987Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 06] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780154294407",
+      "timestamp": "2026-05-30T15:18:14.407Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 07] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780154294410",
+      "timestamp": "2026-05-30T15:18:14.410Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 07] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780154294492",
+      "timestamp": "2026-05-30T15:18:14.492Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 05] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780154294697",
+      "timestamp": "2026-05-30T15:18:14.697Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 08] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780154294841",
+      "timestamp": "2026-05-30T15:18:14.841Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 08] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780154295510",
+      "timestamp": "2026-05-30T15:18:15.510Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 09] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780154296742",
+      "timestamp": "2026-05-30T15:18:16.742Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 09] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780154297453",
+      "timestamp": "2026-05-30T15:18:17.453Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 07] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780154298469",
+      "timestamp": "2026-05-30T15:18:18.469Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 11] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780154299391",
+      "timestamp": "2026-05-30T15:18:19.391Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 05] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780154299398",
+      "timestamp": "2026-05-30T15:18:19.398Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 11] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780154302281",
+      "timestamp": "2026-05-30T15:18:22.281Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 08] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780154302666",
+      "timestamp": "2026-05-30T15:18:22.666Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 06] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780154306144",
+      "timestamp": "2026-05-30T15:18:26.144Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 07] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780154307106",
+      "timestamp": "2026-05-30T15:18:27.106Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 07] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780154307146",
+      "timestamp": "2026-05-30T15:18:27.146Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 08] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780154307293",
+      "timestamp": "2026-05-30T15:18:27.293Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 11] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780154307437",
+      "timestamp": "2026-05-30T15:18:27.438Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 09] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780154307611",
+      "timestamp": "2026-05-30T15:18:27.611Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 11] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780154308296",
+      "timestamp": "2026-05-30T15:18:28.296Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 06] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780154312327",
+      "timestamp": "2026-05-30T15:18:32.327Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 08] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780154315168",
+      "timestamp": "2026-05-30T15:18:35.168Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 11] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780154315171",
+      "timestamp": "2026-05-30T15:18:35.171Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 07] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780154315174",
+      "timestamp": "2026-05-30T15:18:35.174Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 08] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780154317522",
+      "timestamp": "2026-05-30T15:18:37.522Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 11] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780154318043",
+      "timestamp": "2026-05-30T15:18:38.043Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 09] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780154318867",
+      "timestamp": "2026-05-30T15:18:38.867Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 07] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780154320078",
+      "timestamp": "2026-05-30T15:18:40.078Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 11] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780154323290",
+      "timestamp": "2026-05-30T15:18:43.290Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 11] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780154324039",
+      "timestamp": "2026-05-30T15:18:44.039Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 08] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780154330347",
+      "timestamp": "2026-05-30T15:18:50.347Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 08] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780154334975",
+      "timestamp": "2026-05-30T15:18:54.975Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [existing] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780154334978",
+      "timestamp": "2026-05-30T15:18:54.978Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 09] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780154337995",
+      "timestamp": "2026-05-30T15:18:57.995Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 11] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780154339662",
+      "timestamp": "2026-05-30T15:18:59.662Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 11] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780154341175",
+      "timestamp": "2026-05-30T15:19:01.175Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [existing] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780155589653",
+      "timestamp": "2026-05-30T15:39:49.653Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 01] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780155589658",
+      "timestamp": "2026-05-30T15:39:49.658Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 01] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780155591943",
+      "timestamp": "2026-05-30T15:39:51.943Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 02] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780155592244",
+      "timestamp": "2026-05-30T15:39:52.244Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 02] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780155595158",
+      "timestamp": "2026-05-30T15:39:55.158Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 03] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780155596223",
+      "timestamp": "2026-05-30T15:39:56.223Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 03] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780155597977",
+      "timestamp": "2026-05-30T15:39:57.977Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 04] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780155598035",
+      "timestamp": "2026-05-30T15:39:58.035Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 04] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780155602015",
+      "timestamp": "2026-05-30T15:40:02.015Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 05] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780155602055",
+      "timestamp": "2026-05-30T15:40:02.055Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 05] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780155605699",
+      "timestamp": "2026-05-30T15:40:05.699Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 06] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780155606088",
+      "timestamp": "2026-05-30T15:40:06.088Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 06] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780155609159",
+      "timestamp": "2026-05-30T15:40:09.159Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 07] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780155610119",
+      "timestamp": "2026-05-30T15:40:10.119Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 07] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780155613720",
+      "timestamp": "2026-05-30T15:40:13.720Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 08] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780155613772",
+      "timestamp": "2026-05-30T15:40:13.772Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 08] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780155615644",
+      "timestamp": "2026-05-30T15:40:15.644Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 09] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780155617573",
+      "timestamp": "2026-05-30T15:40:17.573Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 09] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780155619184",
+      "timestamp": "2026-05-30T15:40:19.184Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 11] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780155619192",
+      "timestamp": "2026-05-30T15:40:19.192Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 10] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780155622629",
+      "timestamp": "2026-05-30T15:40:22.629Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 11] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780155624458",
+      "timestamp": "2026-05-30T15:40:24.458Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 11] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780155625203",
+      "timestamp": "2026-05-30T15:40:25.203Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 12] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780155627769",
+      "timestamp": "2026-05-30T15:40:27.769Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 11] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780155629599",
+      "timestamp": "2026-05-30T15:40:29.599Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 12] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780155630223",
+      "timestamp": "2026-05-30T15:40:30.223Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 12] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780155633236",
+      "timestamp": "2026-05-30T15:40:33.236Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 13] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780155634327",
+      "timestamp": "2026-05-30T15:40:34.327Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 12] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780155635856",
+      "timestamp": "2026-05-30T15:40:35.856Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 13] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780155637016",
+      "timestamp": "2026-05-30T15:40:37.016Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 13] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780155638456",
+      "timestamp": "2026-05-30T15:40:38.456Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 14] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780155639752",
+      "timestamp": "2026-05-30T15:40:39.752Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 13] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780155640327",
+      "timestamp": "2026-05-30T15:40:40.327Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 14] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780155644754",
+      "timestamp": "2026-05-30T15:40:44.754Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 14] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780155645148",
+      "timestamp": "2026-05-30T15:40:45.148Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 15] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780155648678",
+      "timestamp": "2026-05-30T15:40:48.678Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 14] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780155650091",
+      "timestamp": "2026-05-30T15:40:50.091Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 15] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780155652020",
+      "timestamp": "2026-05-30T15:40:52.020Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 15] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780155652931",
+      "timestamp": "2026-05-30T15:40:52.931Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 16] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780155655693",
+      "timestamp": "2026-05-30T15:40:55.693Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 15] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780155658089",
+      "timestamp": "2026-05-30T15:40:58.089Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 16] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780155658099",
+      "timestamp": "2026-05-30T15:40:58.099Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 16] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780155662053",
+      "timestamp": "2026-05-30T15:41:02.053Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 16] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780155662056",
+      "timestamp": "2026-05-30T15:41:02.056Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 17] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780155667970",
+      "timestamp": "2026-05-30T15:41:07.970Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 17] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780155668377",
+      "timestamp": "2026-05-30T15:41:08.377Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 18] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780155672925",
+      "timestamp": "2026-05-30T15:41:12.925Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 18] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780155673481",
+      "timestamp": "2026-05-30T15:41:13.481Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 19] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780155681957",
+      "timestamp": "2026-05-30T15:41:21.957Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 19] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780155681960",
+      "timestamp": "2026-05-30T15:41:21.960Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 20] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780155685078",
+      "timestamp": "2026-05-30T15:41:25.078Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 20] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780155685522",
+      "timestamp": "2026-05-30T15:41:25.522Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 21] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780155688655",
+      "timestamp": "2026-05-30T15:41:28.655Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 21] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780155689351",
+      "timestamp": "2026-05-30T15:41:29.351Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 22] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780155691300",
+      "timestamp": "2026-05-30T15:41:31.300Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 22] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780155691432",
+      "timestamp": "2026-05-30T15:41:31.432Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 23] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780155742727",
+      "timestamp": "2026-05-30T15:42:22.727Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 23] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780155742751",
+      "timestamp": "2026-05-30T15:42:22.751Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 23] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780155745319",
+      "timestamp": "2026-05-30T15:42:25.319Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 24] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780155745323",
+      "timestamp": "2026-05-30T15:42:25.323Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 23] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780155749771",
+      "timestamp": "2026-05-30T15:42:29.771Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 24] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780155749775",
+      "timestamp": "2026-05-30T15:42:29.775Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 24] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780155751905",
+      "timestamp": "2026-05-30T15:42:31.905Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 25] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780155752776",
+      "timestamp": "2026-05-30T15:42:32.776Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Big Fat Surprise] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780155754566",
+      "timestamp": "2026-05-30T15:42:34.566Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [existing] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780155756124",
+      "timestamp": "2026-05-30T15:42:36.124Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 25] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780158374422",
+      "timestamp": "2026-05-30T16:26:14.422Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 01] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780158374926",
+      "timestamp": "2026-05-30T16:26:14.926Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 01] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780158377511",
+      "timestamp": "2026-05-30T16:26:17.512Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 02] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780158377515",
+      "timestamp": "2026-05-30T16:26:17.515Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 02] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780158380108",
+      "timestamp": "2026-05-30T16:26:20.108Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 02] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780158380536",
+      "timestamp": "2026-05-30T16:26:20.536Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 03] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780158383165",
+      "timestamp": "2026-05-30T16:26:23.165Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 03] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780158386036",
+      "timestamp": "2026-05-30T16:26:26.036Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 04] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780158386067",
+      "timestamp": "2026-05-30T16:26:26.067Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 04] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780158390370",
+      "timestamp": "2026-05-30T16:26:30.370Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 05] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780158390620",
+      "timestamp": "2026-05-30T16:26:30.620Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 05] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780158394061",
+      "timestamp": "2026-05-30T16:26:34.061Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 06] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780158394067",
+      "timestamp": "2026-05-30T16:26:34.067Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 06] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780158397079",
+      "timestamp": "2026-05-30T16:26:37.080Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 07] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780158398199",
+      "timestamp": "2026-05-30T16:26:38.199Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 07] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780158401092",
+      "timestamp": "2026-05-30T16:26:41.092Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 08] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780158403342",
+      "timestamp": "2026-05-30T16:26:43.342Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 08] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780158403616",
+      "timestamp": "2026-05-30T16:26:43.616Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 09] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780158407467",
+      "timestamp": "2026-05-30T16:26:47.467Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 09] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780158408015",
+      "timestamp": "2026-05-30T16:26:48.015Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 11] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780158410436",
+      "timestamp": "2026-05-30T16:26:50.436Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 10] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780158410438",
+      "timestamp": "2026-05-30T16:26:50.438Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 11] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780158414016",
+      "timestamp": "2026-05-30T16:26:54.016Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 12] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780158414019",
+      "timestamp": "2026-05-30T16:26:54.019Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 11] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780158417439",
+      "timestamp": "2026-05-30T16:26:57.439Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 12] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780158417699",
+      "timestamp": "2026-05-30T16:26:57.699Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 11] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780158420491",
+      "timestamp": "2026-05-30T16:27:00.491Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 13] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780158420587",
+      "timestamp": "2026-05-30T16:27:00.587Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 12] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780158423604",
+      "timestamp": "2026-05-30T16:27:03.604Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 13] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780158423932",
+      "timestamp": "2026-05-30T16:27:03.932Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 12] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780158427674",
+      "timestamp": "2026-05-30T16:27:07.674Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 14] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780158429052",
+      "timestamp": "2026-05-30T16:27:09.052Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 13] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780158429925",
+      "timestamp": "2026-05-30T16:27:09.925Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 14] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780158430310",
+      "timestamp": "2026-05-30T16:27:10.310Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 13] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780158519488",
+      "timestamp": "2026-05-30T16:28:39.488Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 15] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780160392612",
+      "timestamp": "2026-05-30T16:59:52.612Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 01] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780160393976",
+      "timestamp": "2026-05-30T16:59:53.976Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 01] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780160395845",
+      "timestamp": "2026-05-30T16:59:55.845Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 02] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780160397437",
+      "timestamp": "2026-05-30T16:59:57.437Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 02] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780160400436",
+      "timestamp": "2026-05-30T17:00:00.436Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 03] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780160402381",
+      "timestamp": "2026-05-30T17:00:02.381Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 03] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780160404359",
+      "timestamp": "2026-05-30T17:00:04.359Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 04] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780160406152",
+      "timestamp": "2026-05-30T17:00:06.152Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 04] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780160410126",
+      "timestamp": "2026-05-30T17:00:10.126Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 05] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780160412629",
+      "timestamp": "2026-05-30T17:00:12.629Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 05] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780160415371",
+      "timestamp": "2026-05-30T17:00:15.371Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 06] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780160417067",
+      "timestamp": "2026-05-30T17:00:17.067Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 06] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780160422743",
+      "timestamp": "2026-05-30T17:00:22.743Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 07] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780160428332",
+      "timestamp": "2026-05-30T17:00:28.332Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 07] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780160430550",
+      "timestamp": "2026-05-30T17:00:30.550Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 08] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780160432460",
+      "timestamp": "2026-05-30T17:00:32.460Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 08] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780160435461",
+      "timestamp": "2026-05-30T17:00:35.461Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 09] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780160437938",
+      "timestamp": "2026-05-30T17:00:37.938Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 09] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780160441244",
+      "timestamp": "2026-05-30T17:00:41.244Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 10] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780160444690",
+      "timestamp": "2026-05-30T17:00:44.690Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 11] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780160446283",
+      "timestamp": "2026-05-30T17:00:46.283Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 11] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780160448548",
+      "timestamp": "2026-05-30T17:00:48.548Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 12] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780160450709",
+      "timestamp": "2026-05-30T17:00:50.709Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 12] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780160453149",
+      "timestamp": "2026-05-30T17:00:53.149Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 13] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780160457209",
+      "timestamp": "2026-05-30T17:00:57.209Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 13] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780160459498",
+      "timestamp": "2026-05-30T17:00:59.498Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 14] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780160463355",
+      "timestamp": "2026-05-30T17:01:03.355Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 14] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780160471129",
+      "timestamp": "2026-05-30T17:01:11.129Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 15] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780160473896",
+      "timestamp": "2026-05-30T17:01:13.896Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 15] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780160479347",
+      "timestamp": "2026-05-30T17:01:19.347Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 16] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780160482348",
+      "timestamp": "2026-05-30T17:01:22.348Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 16] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780160486293",
+      "timestamp": "2026-05-30T17:01:26.293Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 17] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780160598314",
+      "timestamp": "2026-05-30T17:03:18.314Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 17] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780160599701",
+      "timestamp": "2026-05-30T17:03:19.701Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 18] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780160601785",
+      "timestamp": "2026-05-30T17:03:21.785Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 18] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780160603269",
+      "timestamp": "2026-05-30T17:03:23.269Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 19] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780160604728",
+      "timestamp": "2026-05-30T17:03:24.728Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 19] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780160606211",
+      "timestamp": "2026-05-30T17:03:26.211Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 20] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780160609476",
+      "timestamp": "2026-05-30T17:03:29.476Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 20] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780160610666",
+      "timestamp": "2026-05-30T17:03:30.666Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 21] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780160612114",
+      "timestamp": "2026-05-30T17:03:32.114Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 21] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780160613697",
+      "timestamp": "2026-05-30T17:03:33.697Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 22] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780160615468",
+      "timestamp": "2026-05-30T17:03:35.468Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 22] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780160617275",
+      "timestamp": "2026-05-30T17:03:37.275Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 23] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780160619632",
+      "timestamp": "2026-05-30T17:03:39.632Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 23] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780160621458",
+      "timestamp": "2026-05-30T17:03:41.458Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 24] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780160622913",
+      "timestamp": "2026-05-30T17:03:42.913Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 24] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780160624360",
+      "timestamp": "2026-05-30T17:03:44.360Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 25] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780160626114",
+      "timestamp": "2026-05-30T17:03:46.114Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Big Fat Surprise] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780160628054",
+      "timestamp": "2026-05-30T17:03:48.054Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [existing] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780160629594",
+      "timestamp": "2026-05-30T17:03:49.594Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 25] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780161218363",
+      "timestamp": "2026-05-30T17:13:38.363Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 01] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780161218690",
+      "timestamp": "2026-05-30T17:13:38.690Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 01] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780161222364",
+      "timestamp": "2026-05-30T17:13:42.364Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 02] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780161223879",
+      "timestamp": "2026-05-30T17:13:43.879Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 02] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780161233911",
+      "timestamp": "2026-05-30T17:13:53.911Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 03] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780161233915",
+      "timestamp": "2026-05-30T17:13:53.915Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 03] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780161236432",
+      "timestamp": "2026-05-30T17:13:56.432Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 04] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780161236492",
+      "timestamp": "2026-05-30T17:13:56.492Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 04] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780161241484",
+      "timestamp": "2026-05-30T17:14:01.484Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 05] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780161241797",
+      "timestamp": "2026-05-30T17:14:01.797Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 04] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780161244564",
+      "timestamp": "2026-05-30T17:14:04.564Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 05] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780161244567",
+      "timestamp": "2026-05-30T17:14:04.567Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 05] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780161247119",
+      "timestamp": "2026-05-30T17:14:07.119Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 06] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780161247611",
+      "timestamp": "2026-05-30T17:14:07.611Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 05] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780161249503",
+      "timestamp": "2026-05-30T17:14:09.503Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 06] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780161251692",
+      "timestamp": "2026-05-30T17:14:11.692Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 06] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780161252647",
+      "timestamp": "2026-05-30T17:14:12.647Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 07] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780161255567",
+      "timestamp": "2026-05-30T17:14:15.567Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 06] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780161257869",
+      "timestamp": "2026-05-30T17:14:17.869Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 07] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780161258213",
+      "timestamp": "2026-05-30T17:14:18.213Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 07] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780161262272",
+      "timestamp": "2026-05-30T17:14:22.272Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 08] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780161262278",
+      "timestamp": "2026-05-30T17:14:22.278Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 07] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780161265903",
+      "timestamp": "2026-05-30T17:14:25.903Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 08] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780161265919",
+      "timestamp": "2026-05-30T17:14:25.919Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 08] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780161268135",
+      "timestamp": "2026-05-30T17:14:28.135Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 09] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780161268329",
+      "timestamp": "2026-05-30T17:14:28.329Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 08] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780161270280",
+      "timestamp": "2026-05-30T17:14:30.280Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 09] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780161271507",
+      "timestamp": "2026-05-30T17:14:31.507Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 09] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780161273707",
+      "timestamp": "2026-05-30T17:14:33.707Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 10] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780161273999",
+      "timestamp": "2026-05-30T17:14:33.999Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 11] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780161277136",
+      "timestamp": "2026-05-30T17:14:37.136Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 11] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780162751889",
+      "timestamp": "2026-05-30T17:39:11.889Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 01] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780162752976",
+      "timestamp": "2026-05-30T17:39:12.976Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 01] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780162755210",
+      "timestamp": "2026-05-30T17:39:15.210Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 02] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780162757468",
+      "timestamp": "2026-05-30T17:39:17.468Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 02] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780162759011",
+      "timestamp": "2026-05-30T17:39:19.011Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 03] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780162761447",
+      "timestamp": "2026-05-30T17:39:21.447Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 03] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780162762880",
+      "timestamp": "2026-05-30T17:39:22.880Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 04] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780162765305",
+      "timestamp": "2026-05-30T17:39:25.305Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 04] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780162767568",
+      "timestamp": "2026-05-30T17:39:27.568Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 05] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780162770511",
+      "timestamp": "2026-05-30T17:39:30.511Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 05] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780162771756",
+      "timestamp": "2026-05-30T17:39:31.756Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 06] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780162773247",
+      "timestamp": "2026-05-30T17:39:33.247Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 06] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780162775264",
+      "timestamp": "2026-05-30T17:39:35.264Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 07] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780162777157",
+      "timestamp": "2026-05-30T17:39:37.157Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 07] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780162778708",
+      "timestamp": "2026-05-30T17:39:38.708Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 08] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780162781228",
+      "timestamp": "2026-05-30T17:39:41.228Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 08] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780162783015",
+      "timestamp": "2026-05-30T17:39:43.015Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 09] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780162786678",
+      "timestamp": "2026-05-30T17:39:46.678Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 09] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780162788115",
+      "timestamp": "2026-05-30T17:39:48.115Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 10] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780162789834",
+      "timestamp": "2026-05-30T17:39:49.834Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 11] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780162791829",
+      "timestamp": "2026-05-30T17:39:51.829Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 11] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780162793984",
+      "timestamp": "2026-05-30T17:39:53.984Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 12] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780162796226",
+      "timestamp": "2026-05-30T17:39:56.226Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 12] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780162797945",
+      "timestamp": "2026-05-30T17:39:57.945Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 13] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780162800416",
+      "timestamp": "2026-05-30T17:40:00.416Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 13] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780162802438",
+      "timestamp": "2026-05-30T17:40:02.438Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 14] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780162804153",
+      "timestamp": "2026-05-30T17:40:04.153Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 14] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780162806682",
+      "timestamp": "2026-05-30T17:40:06.682Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 15] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780162808418",
+      "timestamp": "2026-05-30T17:40:08.418Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 15] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780162811155",
+      "timestamp": "2026-05-30T17:40:11.155Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 16] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780162813040",
+      "timestamp": "2026-05-30T17:40:13.040Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 16] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780162815640",
+      "timestamp": "2026-05-30T17:40:15.640Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 17] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780162818086",
+      "timestamp": "2026-05-30T17:40:18.086Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 17] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780162819929",
+      "timestamp": "2026-05-30T17:40:19.929Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 18] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780162822216",
+      "timestamp": "2026-05-30T17:40:22.216Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 18] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780162826393",
+      "timestamp": "2026-05-30T17:40:26.393Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 19] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780162837620",
+      "timestamp": "2026-05-30T17:40:37.620Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 19] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780162842225",
+      "timestamp": "2026-05-30T17:40:42.225Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 20] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780162851567",
+      "timestamp": "2026-05-30T17:40:51.567Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 20] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780162857792",
+      "timestamp": "2026-05-30T17:40:57.792Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 21] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780162861825",
+      "timestamp": "2026-05-30T17:41:01.825Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 21] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780162863584",
+      "timestamp": "2026-05-30T17:41:03.584Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 22] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780162865711",
+      "timestamp": "2026-05-30T17:41:05.711Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 22] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780162868072",
+      "timestamp": "2026-05-30T17:41:08.072Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 23] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780162870040",
+      "timestamp": "2026-05-30T17:41:10.040Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 23] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780162872178",
+      "timestamp": "2026-05-30T17:41:12.178Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 24] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780162873831",
+      "timestamp": "2026-05-30T17:41:13.831Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 24] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780162876195",
+      "timestamp": "2026-05-30T17:41:16.195Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 25] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780162878440",
+      "timestamp": "2026-05-30T17:41:18.440Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Big Fat Surprise] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780162879880",
+      "timestamp": "2026-05-30T17:41:19.880Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [existing] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780162881975",
+      "timestamp": "2026-05-30T17:41:21.975Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 25] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780163945848",
+      "timestamp": "2026-05-30T17:59:05.848Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 01] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780163946024",
+      "timestamp": "2026-05-30T17:59:06.024Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 01] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780163951665",
+      "timestamp": "2026-05-30T17:59:11.665Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 02] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780163951936",
+      "timestamp": "2026-05-30T17:59:11.936Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 02] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780163958053",
+      "timestamp": "2026-05-30T17:59:18.053Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 03] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780163959027",
+      "timestamp": "2026-05-30T17:59:19.027Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 03] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780163964784",
+      "timestamp": "2026-05-30T17:59:24.784Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 04] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780163964802",
+      "timestamp": "2026-05-30T17:59:24.802Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 04] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780163982062",
+      "timestamp": "2026-05-30T17:59:42.062Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 05] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780163982071",
+      "timestamp": "2026-05-30T17:59:42.071Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 05] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780163988069",
+      "timestamp": "2026-05-30T17:59:48.069Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 06] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780163988133",
+      "timestamp": "2026-05-30T17:59:48.133Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 06] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780163991424",
+      "timestamp": "2026-05-30T17:59:51.424Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 06] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780163991604",
+      "timestamp": "2026-05-30T17:59:51.604Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 07] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780163995848",
+      "timestamp": "2026-05-30T17:59:55.848Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 07] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780163995851",
+      "timestamp": "2026-05-30T17:59:55.851Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 08] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780164002588",
+      "timestamp": "2026-05-30T18:00:02.588Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 08] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780164002594",
+      "timestamp": "2026-05-30T18:00:02.594Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 09] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780164805646",
+      "timestamp": "2026-05-30T18:13:25.646Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 01] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780164805827",
+      "timestamp": "2026-05-30T18:13:25.827Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 10] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780164810634",
+      "timestamp": "2026-05-30T18:13:30.634Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 01] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780164812249",
+      "timestamp": "2026-05-30T18:13:32.249Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 02] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780164814240",
+      "timestamp": "2026-05-30T18:13:34.240Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 02] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780164815663",
+      "timestamp": "2026-05-30T18:13:35.663Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 03] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780164817204",
+      "timestamp": "2026-05-30T18:13:37.204Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 03] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780164818615",
+      "timestamp": "2026-05-30T18:13:38.615Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 04] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780164820387",
+      "timestamp": "2026-05-30T18:13:40.387Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 04] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780164822726",
+      "timestamp": "2026-05-30T18:13:42.726Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 05] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780164827269",
+      "timestamp": "2026-05-30T18:13:47.269Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 05] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780164836020",
+      "timestamp": "2026-05-30T18:13:56.020Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 06] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780164844988",
+      "timestamp": "2026-05-30T18:14:04.988Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 06] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780164847239",
+      "timestamp": "2026-05-30T18:14:07.239Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 07] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780164849076",
+      "timestamp": "2026-05-30T18:14:09.076Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 07] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780164850869",
+      "timestamp": "2026-05-30T18:14:10.869Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 08] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780164853436",
+      "timestamp": "2026-05-30T18:14:13.436Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 08] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780164858180",
+      "timestamp": "2026-05-30T18:14:18.180Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 09] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780164859780",
+      "timestamp": "2026-05-30T18:14:19.780Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 09] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780164864615",
+      "timestamp": "2026-05-30T18:14:24.615Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 10] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780164866344",
+      "timestamp": "2026-05-30T18:14:26.344Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 11] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780164868543",
+      "timestamp": "2026-05-30T18:14:28.543Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 11] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780164871047",
+      "timestamp": "2026-05-30T18:14:31.047Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 12] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780164873992",
+      "timestamp": "2026-05-30T18:14:33.992Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 12] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780164875797",
+      "timestamp": "2026-05-30T18:14:35.797Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 13] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780164877461",
+      "timestamp": "2026-05-30T18:14:37.461Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 13] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780164879243",
+      "timestamp": "2026-05-30T18:14:39.243Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 14] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780164881411",
+      "timestamp": "2026-05-30T18:14:41.411Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 14] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780164884825",
+      "timestamp": "2026-05-30T18:14:44.825Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 15] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780164887667",
+      "timestamp": "2026-05-30T18:14:47.667Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 15] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780164895446",
+      "timestamp": "2026-05-30T18:14:55.446Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 16] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780164898308",
+      "timestamp": "2026-05-30T18:14:58.308Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 16] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780164900397",
+      "timestamp": "2026-05-30T18:15:00.397Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 17] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780164901742",
+      "timestamp": "2026-05-30T18:15:01.742Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 17] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780164903626",
+      "timestamp": "2026-05-30T18:15:03.626Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 18] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780164905671",
+      "timestamp": "2026-05-30T18:15:05.671Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 18] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780164907247",
+      "timestamp": "2026-05-30T18:15:07.247Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 19] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780164908952",
+      "timestamp": "2026-05-30T18:15:08.952Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 19] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780164911148",
+      "timestamp": "2026-05-30T18:15:11.148Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 20] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780164912871",
+      "timestamp": "2026-05-30T18:15:12.871Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 20] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780164915827",
+      "timestamp": "2026-05-30T18:15:15.827Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 21] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780164917348",
+      "timestamp": "2026-05-30T18:15:17.348Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 21] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780164920863",
+      "timestamp": "2026-05-30T18:15:20.863Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 22] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780164922959",
+      "timestamp": "2026-05-30T18:15:22.959Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 22] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780164925926",
+      "timestamp": "2026-05-30T18:15:25.926Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 23] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780164928368",
+      "timestamp": "2026-05-30T18:15:28.368Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 23] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780164932006",
+      "timestamp": "2026-05-30T18:15:32.006Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 24] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780164934675",
+      "timestamp": "2026-05-30T18:15:34.675Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 24] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780164936227",
+      "timestamp": "2026-05-30T18:15:36.227Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 25] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780164938310",
+      "timestamp": "2026-05-30T18:15:38.310Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Big Fat Surprise] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780164940676",
+      "timestamp": "2026-05-30T18:15:40.676Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [existing] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780164943370",
+      "timestamp": "2026-05-30T18:15:43.370Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 25] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780165509408",
+      "timestamp": "2026-05-30T18:25:09.408Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 01] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780165509819",
+      "timestamp": "2026-05-30T18:25:09.819Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 01] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780165510369",
+      "timestamp": "2026-05-30T18:25:10.369Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 02] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780165510650",
+      "timestamp": "2026-05-30T18:25:10.650Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 02] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780165511330",
+      "timestamp": "2026-05-30T18:25:11.330Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 02] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780165511561",
+      "timestamp": "2026-05-30T18:25:11.561Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 03] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780165512255",
+      "timestamp": "2026-05-30T18:25:12.255Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 03] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780165512494",
+      "timestamp": "2026-05-30T18:25:12.494Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 04] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780165513026",
+      "timestamp": "2026-05-30T18:25:13.026Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 04] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780165513337",
+      "timestamp": "2026-05-30T18:25:13.337Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 05] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780165514022",
+      "timestamp": "2026-05-30T18:25:14.022Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 05] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780165514334",
+      "timestamp": "2026-05-30T18:25:14.334Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 06] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1780165525284",
+      "timestamp": "2026-05-30T18:25:25.284Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead - Part 07] was successfully staged offline inside your browser secure database."
     }
   ],
   "config": {
@@ -3001,7 +5577,7 @@
       "enabled": true,
       "type": "native",
       "status": "online",
-      "lastChecked": "2026-05-30T14:12:42.583Z",
+      "lastChecked": "2026-05-30T18:20:17.061Z",
       "error": "Cloudflare Protected (But reachable)"
     },
     {
@@ -3012,7 +5588,7 @@
       "enabled": true,
       "type": "native",
       "status": "online",
-      "lastChecked": "2026-05-30T14:12:44.155Z"
+      "lastChecked": "2026-05-30T18:20:17.115Z"
     },
     {
       "id": "3",
@@ -3022,7 +5598,7 @@
       "enabled": true,
       "type": "native",
       "status": "online",
-      "lastChecked": "2026-05-30T14:12:46.698Z"
+      "lastChecked": "2026-05-30T18:20:17.116Z"
     },
     {
       "id": "4",
@@ -3032,7 +5608,7 @@
       "enabled": true,
       "type": "native",
       "status": "offline",
-      "lastChecked": "2026-05-30T14:12:48.393Z",
+      "lastChecked": "2026-05-30T18:20:17.467Z",
       "error": "Request failed with status code 500"
     },
     {
@@ -3043,7 +5619,7 @@
       "enabled": true,
       "type": "native",
       "status": "online",
-      "lastChecked": "2026-05-30T14:12:48.942Z"
+      "lastChecked": "2026-05-30T18:20:17.108Z"
     },
     {
       "id": "6",
@@ -3053,7 +5629,7 @@
       "enabled": true,
       "type": "native",
       "status": "online",
-      "lastChecked": "2026-05-30T14:12:58.923Z"
+      "lastChecked": "2026-05-30T18:20:17.780Z"
     },
     {
       "id": "7",
@@ -3063,7 +5639,7 @@
       "enabled": true,
       "type": "native",
       "status": "online",
-      "lastChecked": "2026-05-30T14:13:00.307Z"
+      "lastChecked": "2026-05-30T18:20:18.244Z"
     },
     {
       "id": "8",
@@ -3073,8 +5649,8 @@
       "enabled": true,
       "type": "native",
       "status": "offline",
-      "lastChecked": "2026-05-30T14:15:00.313Z",
-      "error": "timeout of 120000ms exceeded"
+      "lastChecked": "2026-05-30T18:20:26.092Z",
+      "error": "timeout of 10000ms exceeded"
     },
     {
       "id": "9",
@@ -3084,7 +5660,7 @@
       "enabled": true,
       "type": "native",
       "status": "online",
-      "lastChecked": "2026-05-30T14:15:09.872Z"
+      "lastChecked": "2026-05-30T18:20:34.735Z"
     }
   ]
 }

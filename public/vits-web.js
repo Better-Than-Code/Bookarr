@@ -195,40 +195,13 @@ async function D(e) {
 async function S(e, m) {
   var r;
   let n;
-  let currentUrl = e;
-  let isLocal = e.indexOf("models/piper-voices") !== -1;
-  let hfUrl = "";
-  if (isLocal) {
-    const idx = e.indexOf("models/piper-voices");
-    hfUrl = "https://huggingface.co/diffusionstudio/piper-voices/resolve/main" + e.substring(idx + "models/piper-voices".length);
-  }
-
   for (let attempt = 0; attempt < 3; attempt++) {
       try {
-          n = await fetch(currentUrl);
+          n = await fetch(e);
           if (n.ok) break;
-          console.warn("[Fetch] Failed to fetch:", currentUrl, "Status:", n.status);
-          
-          if (isLocal && (n.status === 404 || n.status === 403)) {
-              console.log("[Fetch] Local file not found, trying HuggingFace fallback:", hfUrl);
-              currentUrl = hfUrl;
-              isLocal = false;
-              n = await fetch(currentUrl);
-              if (n.ok) break;
-          }
+          console.warn("[Fetch] Retry needed for:", e, "Status:", n.status);
       } catch (ex) {
-          console.warn("[Fetch] Network error:", ex);
-          if (isLocal) {
-              console.log("[Fetch] Network error on local path, trying HuggingFace fallback:", hfUrl);
-              try {
-                  currentUrl = hfUrl;
-                  isLocal = false;
-                  n = await fetch(currentUrl);
-                  if (n.ok) break;
-              } catch (ex2) {
-                  console.warn("[Fetch] HuggingFace fallback failed:", ex2);
-              }
-          }
+          console.warn("[Fetch] Network error, retry:", ex);
       }
       await new Promise(res => setTimeout(res, 2000));
   }
@@ -240,7 +213,7 @@ async function S(e, m) {
     if (s)
       break;
     t.push(d), i += d.length, m == null || m({
-      url: currentUrl,
+      url: e,
       total: a,
       loaded: i
     });

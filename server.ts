@@ -83,25 +83,77 @@ const PUBLIC_TRACKERS = [
   'https://torrents.tmtime.dev:443/announce'
 ];
 
-const client = new WebTorrent({
-  maxConns: 120,           // Safe connection limits for Cloud Run container socket constraints
-  downloadLimit: -1,       // Ensure unlimited download 
-  uploadLimit: 250000,     // Safe upload cap to save bandwidth and system resources
-  tracker: {
-    announce: PUBLIC_TRACKERS
+let _client: any = null;
+function getWebTorrentClient() {
+  if (!_client) {
+    console.log('[WEBTOR] Lazy initializing WebTorrent client...');
+    try {
+      _client = new WebTorrent({
+        maxConns: 120,           // Safe connection limits for Cloud Run container socket constraints
+        downloadLimit: -1,       // Ensure unlimited download 
+        uploadLimit: 250000,     // Safe upload cap to save bandwidth and system resources
+        tracker: {
+          announce: PUBLIC_TRACKERS
+        },
+        dht: { 
+          concurrency: 16,       // Moderate DHT concurrency to prevent out-of-memory or file descriptor exhaustion
+          bootstrap: [
+            'router.bittorrent.com:6881',
+            'router.utorrent.com:6881',
+            'dht.transmissionbt.com:6881',
+            'dht.aelitis.com:6881'
+          ]
+        },
+        lsd: true,
+        webSeeds: true
+      });
+
+      _client.on('error', (err: any) => {
+        if (err.message && err.message.includes('Cannot add duplicate torrent')) {
+          console.log('[WEBTOR] Ignored duplicate torrent add attempt');
+        } else {
+          console.error('[WEBTOR] Global client error:', err);
+        }
+      });
+
+      _client.on('warning', (err: any) => {
+        const msg = err.message || err;
+        if (typeof msg === 'string' && (
+            msg.includes('fetch failed') || 
+            msg.includes('Error connecting to') || 
+            msg.includes('ECONNREFUSED') ||
+            msg.includes('ETIMEDOUT') ||
+            msg.includes('socket hang up') ||
+            msg.includes('handshake timeout')
+        )) return;
+        console.warn('[WEBTOR] Client warning:', msg);
+      });
+    } catch (e: any) {
+      console.error('[WEBTOR] Critical: failed to initialize WebTorrent client:', e);
+    }
+  }
+  return _client;
+}
+
+const client = {
+  get torrents() {
+    return getWebTorrentClient()?.torrents || [];
   },
-  dht: { 
-    concurrency: 16,       // Moderate DHT concurrency to prevent out-of-memory or file descriptor exhaustion
-    bootstrap: [
-      'router.bittorrent.com:6881',
-      'router.utorrent.com:6881',
-      'dht.transmissionbt.com:6881',
-      'dht.aelitis.com:6881'
-    ]
+  add(...args: any[]) {
+    return getWebTorrentClient()?.add(...args);
   },
-  lsd: true,
-  webSeeds: true
-});
+  get(...args: any[]) {
+    return getWebTorrentClient()?.get(...args);
+  },
+  remove(...args: any[]) {
+    return getWebTorrentClient()?.remove(...args);
+  },
+  on(event: string, handler: any) {
+    if (_client) {
+      _client.on(event, handler);
+    }
+  }
+};
 
 const OPENLIBRARY_TIMEOUT = 300000;
 
@@ -160,26 +212,7 @@ const bootstrapTorrentReady = (torrent: any) => {
     }, 2000); // Poll/announce every 2 seconds for the first 20 seconds to achieve super-fast initial bootstrap
 };
 
-client.on('error', (err: any) => {
-  if (err.message && err.message.includes('Cannot add duplicate torrent')) {
-    console.log('[WEBTOR] Ignored duplicate torrent add attempt');
-  } else {
-    console.error('[WEBTOR] Global client error:', err);
-  }
-});
 
-client.on('warning', (err: any) => {
-  const msg = err.message || err;
-  if (typeof msg === 'string' && (
-      msg.includes('fetch failed') || 
-      msg.includes('Error connecting to') || 
-      msg.includes('ECONNREFUSED') ||
-      msg.includes('ETIMEDOUT') ||
-      msg.includes('socket hang up') ||
-      msg.includes('handshake timeout')
-  )) return;
-  console.warn('[WEBTOR] Client warning:', msg);
-});
 
 const addTorrentToClient = (task: TorrentTask): any => {
     const downloadBase = STORAGE_DIRS.download;
@@ -853,11 +886,12 @@ async function enrichTorrentTaskWithMetadata(torrentTitle: string, isAudiobook: 
 
 // Real ticking for downloading torrent tasks using WebTorrent metrics
 setInterval(async () => {
-  const db = loadDB();
-  let updated = false;
+  try {
+    const db = loadDB();
+    let updated = false;
 
-  const updatedTasks = [];
-  for (let task of db.torrentTasks) {
+    const updatedTasks = [];
+    for (let task of db.torrentTasks) {
     if (!task.addedAt) {
       task.addedAt = new Date().toISOString();
       updated = true;
@@ -1167,6 +1201,9 @@ setInterval(async () => {
   if (updated) {
     db.torrentTasks = updatedTasks;
     saveDB(db);
+  }
+  } catch (globalIntervalErr) {
+    console.error('[SERVER] Critical error in downloading polling interval:', globalIntervalErr);
   }
 }, 5000);
 
@@ -1506,7 +1543,7 @@ app.post('/api/scan-library', async (req, res) => {
              }
 
              const newBook: Book = {
-               id: `book-scan-${Date.now()}-${Math.floor(Math.random()*1000)}`,
+               id: `book-scan-${crypto.randomUUID()}`,
                title: fileMeta.title || nameWithoutExt,
                author: fileMeta.author || 'Unknown Author (Scanned)',
                type: isAudio ? 'audiobook' : 'ebook',
