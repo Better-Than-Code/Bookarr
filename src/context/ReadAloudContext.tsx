@@ -187,7 +187,7 @@ export const ReadAloudProvider = ({ children }: { children: ReactNode }) => {
             neuralDownloadFileProgressList: [] 
         }));
         
-        const workerUrl = isKokoro ? `/kokoro-worker.js?v=${Date.now()}` : `/tts-worker.js?v=${Date.now()}`;
+        const workerUrl = isKokoro ? `./kokoro-worker.js?v=${Date.now()}` : `./tts-worker.js?v=${Date.now()}`;
         const worker = new Worker(workerUrl, { type: 'module' });
         worker.onmessage = (e) => {
             const { type, audio, samplingRate, message, percent, speed, fileProgressList, totalLoadedMB, totalSizeMB, reqId, durationMs, isPiperTransfer } = e.data;

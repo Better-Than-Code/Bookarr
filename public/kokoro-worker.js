@@ -83,10 +83,11 @@ async function initSynthesizer(forceBypass = false, customModelId = "Xenova/koko
             
             // Force env configuration to load entirely offline from our local static models folder
             if (env) {
+                const basePath = self.location.href.substring(0, self.location.href.lastIndexOf('/') + 1);
                 env.allowLocalModels = true;
                 env.allowRemoteModels = false;
-                env.localModelPath = self.location.origin + '/models/';
-                env.remoteHost = self.location.origin + '/models/';
+                env.localModelPath = basePath + 'models/';
+                env.remoteHost = basePath + 'models/';
                 env.remotePathTemplate = '{model}/';
             }
             
