@@ -340,7 +340,7 @@ app.use((req, res, next) => {
   try { fs.appendFileSync('proxy.log', '[EXPRESS URL LOG] ' + req.method + ' ' + req.url + '\n'); } catch(e) {}
   next();
 });
-const PORT = 3000;
+const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
 app.use(express.json());
 

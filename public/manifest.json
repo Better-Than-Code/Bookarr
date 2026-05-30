@@ -13,24 +13,6 @@
   "categories": ["books", "entertainment", "utilities"],
   "icons": [
     {
-      "src": "./icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any"
-    },
-    {
-      "src": "./icon-maskable.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "maskable"
-    },
-    {
-      "src": "./icon-monochrome.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "monochrome"
-    },
-    {
       "src": "./icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
@@ -49,22 +31,6 @@
       "purpose": "maskable"
     }
   ],
-  "screenshots": [
-    {
-      "src": "https://picsum.photos/seed/bookrr-sc1/1280/720",
-      "sizes": "1280x720",
-      "type": "image/jpeg",
-      "form_factor": "wide",
-      "label": "Bookrr Full-Featured E-Book Reader"
-    },
-    {
-      "src": "https://picsum.photos/seed/bookrr-sc2/720/1280",
-      "sizes": "720x1280",
-      "type": "image/jpeg",
-      "form_factor": "narrow",
-      "label": "Bookrr Touch-Friendly Audiobook Interface"
-    }
-  ],
   "prefer_related_applications": false,
   "shortcuts": [
     {
@@ -75,6 +41,7 @@
         {
           "src": "./icon-192.png",
           "sizes": "192x192",
+          "type": "image/png",
           "purpose": "any"
         }
       ]
@@ -87,6 +54,7 @@
         {
           "src": "./icon-192.png",
           "sizes": "192x192",
+          "type": "image/png",
           "purpose": "any"
         }
       ]
