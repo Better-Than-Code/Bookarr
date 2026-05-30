@@ -81,6 +81,15 @@ async function initSynthesizer(forceBypass = false, customModelId = "Xenova/koko
             isDownloading = true;
             self.postMessage({ type: 'init_start', message: `Initializing pipeline for ${huggingfaceModelId}...` });
             
+            // Force env configuration to load entirely offline from our local static models folder
+            if (env) {
+                env.allowLocalModels = true;
+                env.allowRemoteModels = false;
+                env.localModelPath = self.location.origin + '/models/';
+                env.remoteHost = self.location.origin + '/models/';
+                env.remotePathTemplate = '{model}/';
+            }
+            
             const isWebGPU = typeof navigator !== 'undefined' && navigator.gpu;
             
             if (isWebGPU) {

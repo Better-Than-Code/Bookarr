@@ -7,7 +7,11 @@ const ASSETS_TO_CACHE = [
   './icon-maskable.svg',
   './icon-monochrome.svg',
   './icon-192.png',
-  './icon-512.png'
+  './icon-512.png',
+  './models/onnx-community/Kokoro-82M-v1.0-ONNX/config.json',
+  './models/onnx-community/Kokoro-82M-v1.0-ONNX/tokenizer.json',
+  './models/onnx-community/Kokoro-82M-v1.0-ONNX/tokenizer_config.json',
+  './models/onnx-community/Kokoro-82M-v1.0-ONNX/preprocessor_config.json'
 ];
 
 self.addEventListener('install', (event) => {

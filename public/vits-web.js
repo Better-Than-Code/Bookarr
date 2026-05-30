@@ -1,4 +1,4 @@
-const u = "https://huggingface.co/diffusionstudio/piper-voices/resolve/main", B = "https://cdnjs.cloudflare.com/ajax/libs/onnxruntime-web/1.18.0/", x = "https://cdn.jsdelivr.net/npm/@diffusionstudio/piper-wasm@1.0.0/build/piper_phonemize", c = {
+const u = self.location.origin + "/models/piper-voices", B = "https://cdnjs.cloudflare.com/ajax/libs/onnxruntime-web/1.18.0/", x = "https://cdn.jsdelivr.net/npm/@diffusionstudio/piper-wasm@1.0.0/build/piper_phonemize", c = {
   "ar_JO-kareem-low": "ar/ar_JO/kareem/low/ar_JO-kareem-low.onnx",
   "ar_JO-kareem-medium": "ar/ar_JO/kareem/medium/ar_JO-kareem-medium.onnx",
   "ca_ES-upc_ona-medium": "ca/ca_ES/upc_ona/medium/ca_ES-upc_ona-medium.onnx",
@@ -120,7 +120,7 @@ const u = "https://huggingface.co/diffusionstudio/piper-voices/resolve/main", B 
   "zh_CN-huayan-x_low": "zh/zh_CN/huayan/x_low/zh_CN-huayan-x_low.onnx"
 };
 async function p(e, m) {
-  if (e.match("https://huggingface.co") || e.match("/api/models")) {
+  if (e.match("https://huggingface.co") || e.match("/api/models") || e.indexOf("/models/") !== -1) {
     try {
       const cache = await caches.open("piper");
       const url = new URL(e, location.origin).toString();
@@ -153,7 +153,7 @@ async function R(e) {
   }
 }
 async function D(e) {
-  if (e.match("https://huggingface.co") || e.match("/api/models")) {
+  if (e.match("https://huggingface.co") || e.match("/api/models") || e.indexOf("/models/") !== -1) {
     try {
       const cache = await caches.open("piper");
       const url = new URL(e, location.origin).toString();
