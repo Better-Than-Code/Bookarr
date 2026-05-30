@@ -2438,7 +2438,14 @@ app.get('/manifest.json', (req, res) => {
     res.sendFile(filePath);
 });
 
-app.get(['/icon-192.png', '/icon-512.png'], (req, res) => {
+app.get([
+    '/icon-192.png',
+    '/icon-512.png',
+    '/icon-maskable-192.png',
+    '/icon-maskable-512.png',
+    '/icon-monochrome-192.png',
+    '/icon-monochrome-512.png'
+], (req, res) => {
     const iconName = req.path.split('/').pop() || 'icon-512.png';
     const possiblePaths = [
         path.join(process.cwd(), 'dist', iconName),
@@ -2449,7 +2456,11 @@ app.get(['/icon-192.png', '/icon-512.png'], (req, res) => {
     res.sendFile(filePath);
 });
 
-app.get(['/icon.svg', '/icon-maskable.svg'], (req, res) => {
+app.get([
+    '/icon.svg',
+    '/icon-maskable.svg',
+    '/icon-monochrome.svg'
+], (req, res) => {
     const iconName = req.path.split('/').pop() || 'icon.svg';
     const possiblePaths = [
         path.join(process.cwd(), 'dist', iconName),
