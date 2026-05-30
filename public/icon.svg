@@ -1,67 +1,32 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
-  <defs>
-    <!-- Beautiful, vibrant gradient for the book pages and highlights -->
-    <linearGradient id="book-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#818cf8" />
-      <stop offset="50%" stop-color="#4f46e5" />
-      <stop offset="100%" stop-color="#06b6d4" />
-    </linearGradient>
-    <linearGradient id="bg-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#1e1b4b" />
-      <stop offset="100%" stop-color="#0f172a" />
-    </linearGradient>
-    <!-- Soft shadow for the book layers -->
-    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
-      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000000" flood-opacity="0.5"/>
-    </filter>
-  </defs>
-
-  <!-- Solid rounded base for PWA compatibility -->
-  <rect width="100%" height="100%" rx="112" fill="url(#bg-grad)" />
-
-  <!-- Outer ambient glow ring -->
-  <circle cx="256" cy="256" r="180" fill="none" stroke="url(#book-grad)" stroke-width="4" stroke-opacity="0.15" />
-
-  <!-- The stylized Book & Soundwave representation -->
-  <g filter="url(#shadow)" transform="translate(10, 0)">
-    <!-- Right and Left backing pages -->
-    <path d="M 246,150 C 190,150 140,180 90,180 L 90,360 C 140,360 190,330 246,330 Z" fill="#ffffff" fill-opacity="0.05" />
-    <path d="M 266,150 C 322,150 372,180 422,180 L 422,360 C 372,360 322,330 266,330 Z" fill="#ffffff" fill-opacity="0.05" />
-
-    <!-- Solid Book Base -->
-    <path d="M 246,165 C 195,165 155,190 105,190 L 105,340 C 155,340 195,315 246,315 Z" fill="url(#book-grad)" />
-    <path d="M 266,165 C 317,165 357,190 407,190 L 407,340 C 357,340 317,315 266,315 Z" fill="url(#book-grad)" />
-
-    <!-- Detailed internal overlay pages -->
-    <path d="M 246,175 C 200,175 165,198 120,198 L 120,332 C 165,332 200,305 246,305 Z" fill="#ffffff" fill-opacity="0.9" />
-    <path d="M 266,175 C 312,175 347,198 392,198 L 392,332 C 347,332 312,305 266,305 Z" fill="#ffffff" fill-opacity="0.95" />
-
-    <!-- Center fold axis / spine shadow -->
-    <rect x="249" y="155" width="14" height="175" rx="7" fill="#1e1b4b" opacity="0.8" />
-    <rect x="254" y="160" width="4" height="165" rx="2" fill="url(#book-grad)" />
-
-    <!-- Soundwave lines emerging directly from pages -->
-    <rect x="180" y="220" width="6" height="40" rx="3" fill="#1e1d2c" />
-    <rect x="180" y="220" width="6" height="40" rx="3" fill="url(#book-grad)" opacity="0.75" />
+  <!-- Round background icon -->
+  <rect width="100%" height="100%" rx="112" fill="#6366f1" />
+  
+  <!-- Centered container for the book artwork (Y: 130 to 380, X: 110 to 402) -->
+  <g fill="#ffffff">
+    <!-- Left page of the book -->
+    <path d="M 246,360 C 190,360 150,330 100,330 L 100,180 C 150,180 190,210 246,210 Z" />
+    <!-- Right page of the book -->
+    <path d="M 266,360 C 322,360 362,330 412,330 L 412,180 C 362,180 322,210 266,210 Z" />
     
-    <rect x="195" y="205" width="6" height="70" rx="3" fill="#1e1d2c" />
-    <rect x="195" y="205" width="6" height="70" rx="3" fill="url(#book-grad)" opacity="0.8" />
+    <!-- Spine bookmark ribbon draping down -->
+    <path d="M 248,190 L 264,190 L 264,390 L 256,380 L 248,390 Z" fill="#f59e0b" />
     
-    <rect x="210" y="230" width="6" height="30" rx="3" fill="#1e1d2c" />
-
-    <rect x="296" y="230" width="6" height="30" rx="3" fill="#1e1d2c" />
-    
-    <rect x="311" y="205" width="6" height="70" rx="3" fill="#1e1d2c" />
-    <rect x="311" y="205" width="6" height="70" rx="3" fill="url(#book-grad)" opacity="0.85" />
-    
-    <rect x="326" y="220" width="6" height="40" rx="3" fill="#1e1d2c" />
-    <rect x="326" y="220" width="6" height="40" rx="3" fill="url(#book-grad)" opacity="0.75" />
+    <!-- Hard book cover showing slightly at the bottom / corners for beautiful depth -->
+    <path d="M 246,370 C 185,370 145,340 94,340 L 94,330 C 145,330 185,360 246,360 Z" fill="#4338ca" />
+    <path d="M 266,370 C 327,370 367,340 418,340 L 418,330 C 367,330 327,360 266,360 Z" fill="#4338ca" />
   </g>
-
-  <!-- Elegant headphones arching over -->
-  <path d="M 120,290 A 160,160 0 0,1 392,290" fill="none" stroke="url(#book-grad)" stroke-width="12" stroke-linecap="round" filter="url(#shadow)" />
-  <rect x="104" y="260" width="22" height="60" rx="11" fill="url(#book-grad)" filter="url(#shadow)" />
-  <rect x="386" y="260" width="22" height="60" rx="11" fill="url(#book-grad)" filter="url(#shadow)" />
-  <rect x="114" y="268" width="8" height="44" rx="4" fill="#ffffff" fill-opacity="0.3" />
-  <rect x="390" y="268" width="8" height="44" rx="4" fill="#ffffff" fill-opacity="0.3" />
+  
+  <!-- Flat, clean microphone/audio waves to signify audiobooks -->
+  <g fill="#e0e7ff" opacity="0.9">
+    <!-- Three sleek reading/audio lines on left page -->
+    <rect x="130" y="235" width="80" height="8" rx="4" />
+    <rect x="130" y="260" width="80" height="8" rx="4" />
+    <rect x="130" y="285" width="50" height="8" rx="4" />
+    
+    <!-- Three sleek reading/audio lines on right page -->
+    <rect x="302" y="235" width="80" height="8" rx="4" />
+    <rect x="302" y="260" width="80" height="8" rx="4" />
+    <rect x="302" y="285" width="50" height="8" rx="4" />
+  </g>
 </svg>
