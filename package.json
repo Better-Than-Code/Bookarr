@@ -33,6 +33,7 @@
     "react-dom": "^19.0.1",
     "react-pdf": "^10.4.1",
     "react-reader": "^2.0.15",
+    "sharp": "^0.34.5",
     "string-similarity": "^4.0.4",
     "vite": "^6.2.3",
     "webtorrent": "^3.0.0"
