@@ -1,44 +1,97 @@
 {
   "books": [
     {
-      "id": "book-1779633397971",
+      "id": "book-1779889259305",
       "title": "Steve Jobs",
       "author": "Walter Isaacson",
-      "coverUrl": "https://covers.openlibrary.org/b/id/12374726-L.jpg",
+      "coverUrl": "https://is1-ssl.mzstatic.com/image/thumb/Publication114/v4/59/7e/03/597e0370-4d18-cc3d-09e3-3e7c6434e168/9781451648553.jpg/600x600bb.jpg",
       "type": "ebook",
-      "description": "Discovered and downloaded via Bookrr integration from Tracker The Pirate Bay.",
+      "description": "Walter Isaacson’s “enthralling” (The New Yorker) worldwide bestselling biography of Apple cofounder Steve Jobs.Based on more than forty interviews with Steve Jobs conducted over two years—as well as interviews with more than 100 family members, friends, adversaries, competitors, and colleagues—Walter Isaacson has written a riveting story of the roller-coaster life and searingly intense personality of a creative entrepreneur whose passion for perfection and ferocious drive revolutionized six industries: personal computers, animated movies, music, phones, tablet computing, and digital publishing.At a time when America is seeking ways to sustain its innovative edge, Jobs stands as the ultimate icon of inventiveness and applied imagination. He knew that the best way to create value in 21st century was to connect creativity with technology. He built a company where leaps of the imagination were combined with remarkable feats of engineering.Although Jobs cooperated with the author, he asked for no control over what was written. He put nothing off-limits. He encouraged the people he knew to speak honestly. And Jobs speaks candidly, sometimes brutally so, about the people he worked with and competed against. His friends, foes, and colleagues provide an unvarnished view of the passions, perfectionism, obsessions, artistry, devilry, and compulsion for control that shaped his approach to business and the innovative products that resulted.Driven by demons, Jobs could drive those around him to fury and despair. But his personality and products were interrelated, just as Apple’s hardware and software tended to be, as if part of an integrated system. His tale is instructive and cautionary, filled with lessons about innovation, character, leadership, and values.Steve Jobs is the inspiration for the movie of the same name starring Michael Fassbender, Kate Winslet, Seth Rogen, and Jeff Daniels, directed by Danny Boyle with a screenplay by Aaron Sorkin.",
       "genres": [
-        "Literature",
-        "Document"
+        "General"
       ],
-      "progress": 8,
+      "progress": 14,
       "currentTime": 0,
       "isDownloaded": true,
       "size": "4.15 MiB",
-      "addedAt": "2026-05-24T14:36:37.036Z",
+      "addedAt": "2026-05-27T13:26:49.558Z",
       "chapters": [],
-      "currentPage": 11,
-      "filePath": "/app/applet/data/downloads/Steve Jobs by Walter Isaacson EPUB/Steve Jobs by Walter Isaacson EPUB/Steve Jobs by Walter Isaacson.epub",
-      "fileUrl": "/api/files/Steve Jobs by Walter Isaacson.epub"
+      "currentPage": 19,
+      "filePath": "/app/applet/data/bookarr/download/Steve Jobs by Walter Isaacson EPUB/Steve Jobs by Walter Isaacson EPUB/Steve Jobs by Walter Isaacson.epub",
+      "fileUrl": "/api/files/Steve%20Jobs%20by%20Walter%20Isaacson.epub",
+      "year": "2011",
+      "publisher": "",
+      "isbn": ""
+    },
+    {
+      "id": "book-1779930820787",
+      "title": "The Fountainhead",
+      "author": "Ayn Rand",
+      "type": "ebook",
+      "coverUrl": "https://covers.openlibrary.org/b/id/6767765-L.jpg",
+      "description": "A classical volume cataloged via online lookup.",
+      "genres": [
+        "General"
+      ],
+      "isDownloaded": false,
+      "size": "1.2 MB",
+      "pages": 250,
+      "chapters": [
+        {
+          "id": "ch-1779930820543-1",
+          "title": "Overview",
+          "content": "Point this book to a physical epub or trigger a search Tracker index below to fetch the book content."
+        }
+      ],
+      "progress": 9,
+      "currentTime": 0,
+      "addedAt": "2026-05-28T01:13:40.787Z",
+      "currentPage": 7
     }
   ],
   "torrentTasks": [
     {
-      "id": "task-1779637741815",
-      "name": "Nina Teicholz - The Big Fat Surprise: Why Butter, Meat and Chees",
-      "size": "5.78 MiB",
-      "progress": 0,
-      "downloadSpeed": "0.0 MB/s",
+      "id": "task-1779921840133",
+      "name": "The Fountainhead by Ayn Rand",
+      "size": "2.16 MiB",
+      "progress": 100,
+      "downloadSpeed": "0 KB/s",
       "uploadSpeed": "0 KB/s",
-      "eta": "Calculating...",
-      "status": "downloading",
-      "magnetLink": "magnet:?xt=urn:btih:A63C4768CB89D9FC1EF16DF0793579F0438A2B67&dn=Nina+Teicholz+-+The+Big+Fat+Surprise%3A+Why+Butter%2C+Meat+and+Chees&tr=http%3A%2F%2Fp4p.arenabg.com%3A1337%2Fannounce&tr=udp%3A%2F%2F47.ip-51-68-199.eu%3A6969%2Fannounce&tr=udp%3A%2F%2F9.rarbg.me%3A2780%2Fannounce&tr=udp%3A%2F%2F9.rarbg.to%3A2710%2Fannounce&tr=udp%3A%2F%2F9.rarbg.to%3A2730%2Fannounce&tr=udp%3A%2F%2F9.rarbg.to%3A2920%2Fannounce&tr=udp%3A%2F%2Fopen.stealth.si%3A80%2Fannounce&tr=udp%3A%2F%2Fopentracker.i2p.rocks%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.coppersurfer.tk%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.cyberia.is%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.dler.org%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.internetwarriors.net%3A1337%2Fannounce&tr=udp%3A%2F%2Ftracker.leechers-paradise.org%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.openbittorrent.com%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337&tr=udp%3A%2F%2Ftracker.pirateparty.gr%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.tiny-vps.com%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.torrent.eu.org%3A451%2Fannounce",
+      "eta": "Done",
+      "status": "completed",
+      "magnetLink": "magnet:?xt=urn:btih:93AA6A11D82EA5E1F12EE4968B4B46CDC3C282CE&dn=The+Fountainhead+by+Ayn+Rand+%28ePUB%2FMobi%29&tr=http%3A%2F%2Fp4p.arenabg.com%3A1337%2Fannounce&tr=udp%3A%2F%2F47.ip-51-68-199.eu%3A6969%2Fannounce&tr=udp%3A%2F%2F9.rarbg.me%3A2780%2Fannounce&tr=udp%3A%2F%2F9.rarbg.to%3A2710%2Fannounce&tr=udp%3A%2F%2F9.rarbg.to%3A2730%2Fannounce&tr=udp%3A%2F%2F9.rarbg.to%3A2920%2Fannounce&tr=udp%3A%2F%2Fopen.stealth.si%3A80%2Fannounce&tr=udp%3A%2F%2Fopentracker.i2p.rocks%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.coppersurfer.tk%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.cyberia.is%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.dler.org%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.internetwarriors.net%3A1337%2Fannounce&tr=udp%3A%2F%2Ftracker.leechers-paradise.org%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.openbittorrent.com%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337&tr=udp%3A%2F%2Ftracker.pirateparty.gr%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.tiny-vps.com%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.torrent.eu.org%3A451%2Fannounce",
       "indexer": "The Pirate Bay",
-      "files": [],
-      "infoHash": "a63c4768cb89d9fc1ef16df0793579f0438a2b67",
+      "addedAt": "2026-05-27T22:44:00.133Z",
+      "files": [
+        {
+          "name": "cover.jpg",
+          "size": "0.1 MB",
+          "progress": 100,
+          "type": "cover"
+        },
+        {
+          "name": "metadata.opf",
+          "size": "0.0 MB",
+          "progress": 100,
+          "type": "other"
+        },
+        {
+          "name": "The Fountainhead - Ayn Rand.epub",
+          "size": "0.8 MB",
+          "progress": 100,
+          "type": "ebook"
+        },
+        {
+          "name": "The Fountainhead - Ayn Rand.mobi",
+          "size": "1.3 MB",
+          "progress": 100,
+          "type": "ebook"
+        }
+      ],
+      "numPeers": 1,
       "enrichedBook": {
-        "id": "book-1779637744159",
-        "title": "Nina Teicholz - The Big Fat Surprise: Why Butter, Meat and Chees",
+        "id": "book-1779921840702",
+        "title": "The Fountainhead by Ayn Rand (/Mobi)",
         "author": "Unknown Author",
         "coverUrl": "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?auto=format&fit=crop&q=80&w=400",
         "type": "ebook",
@@ -50,12 +103,57 @@
         "progress": 0,
         "currentTime": 0,
         "isDownloaded": true,
-        "size": "5.78 MiB",
-        "addedAt": "2026-05-24T15:49:04.159Z",
+        "size": "2.16 MiB",
+        "addedAt": "2026-05-27T22:44:00.702Z",
         "chapters": [],
         "currentPage": 1
       },
-      "numPeers": 0
+      "infoHash": "93aa6a11d82ea5e1f12ee4968b4b46cdc3c282ce"
+    },
+    {
+      "id": "task-1779939390267",
+      "name": "Ayn Rand - The Fountainhead",
+      "size": "483.19 MiB",
+      "progress": 0,
+      "downloadSpeed": "0.0 KB/s",
+      "uploadSpeed": "0 KB/s",
+      "eta": "Finding peers...",
+      "status": "stalled",
+      "magnetLink": "magnet:?xt=urn:btih:51887E39B5A3B57461D86A8D5E36CF5AD2FD8A5F&dn=Ayn+Rand+-+The+Fountainhead&tr=http%3A%2F%2Fp4p.arenabg.com%3A1337%2Fannounce&tr=udp%3A%2F%2F47.ip-51-68-199.eu%3A6969%2Fannounce&tr=udp%3A%2F%2F9.rarbg.me%3A2780%2Fannounce&tr=udp%3A%2F%2F9.rarbg.to%3A2710%2Fannounce&tr=udp%3A%2F%2F9.rarbg.to%3A2730%2Fannounce&tr=udp%3A%2F%2F9.rarbg.to%3A2920%2Fannounce&tr=udp%3A%2F%2Fopen.stealth.si%3A80%2Fannounce&tr=udp%3A%2F%2Fopentracker.i2p.rocks%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.coppersurfer.tk%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.cyberia.is%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.dler.org%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.internetwarriors.net%3A1337%2Fannounce&tr=udp%3A%2F%2Ftracker.leechers-paradise.org%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.openbittorrent.com%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337&tr=udp%3A%2F%2Ftracker.pirateparty.gr%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.tiny-vps.com%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.torrent.eu.org%3A451%2Fannounce",
+      "indexer": "The Pirate Bay",
+      "addedAt": "2026-05-28T03:36:30.267Z",
+      "files": [
+        {
+          "name": "Audio Content",
+          "size": "483.19 MiB",
+          "progress": 0,
+          "type": "audio"
+        }
+      ],
+      "enrichedBook": {
+        "id": "book-1779939391596",
+        "title": "The Fountainhead",
+        "author": "Ayn Rand",
+        "coverUrl": "https://covers.openlibrary.org/b/id/6767765-L.jpg",
+        "type": "audiobook",
+        "description": "Discovered and downloaded via Bookrr integration from Tracker The Pirate Bay.",
+        "genres": [
+          "Narrative",
+          "Spoken Word"
+        ],
+        "progress": 0,
+        "currentTime": 0,
+        "isDownloaded": true,
+        "size": "483.19 MiB",
+        "addedAt": "2026-05-28T03:36:31.596Z",
+        "chapters": [],
+        "duration": 18000
+      },
+      "numPeers": 0,
+      "infoHash": "51887e39b5a3b57461d86a8d5e36cf5ad2fd8a5f",
+      "zeroSpeedSince": 1780092219931,
+      "lastAnnounceAt": 1780091678457,
+      "retryCount": 3
     }
   ],
   "logs": [
@@ -254,11 +352,418 @@
       "level": "info",
       "source": "webtor",
       "message": "Initiated real torrent stream: [Nina Teicholz - The Big Fat Surprise: Why Butter, Meat and Chees] via WebTorrent client."
+    },
+    {
+      "id": "log-1779832759333",
+      "timestamp": "2026-05-26T21:59:19.333Z",
+      "level": "success",
+      "source": "webtor",
+      "message": "Torrent [Nina Teicholz - The Big Fat Surprise: Why Butter, Meat and Chees] downloaded fully. Registered new E-book in Library!"
+    },
+    {
+      "id": "log-1779832762989",
+      "timestamp": "2026-05-26T21:59:22.989Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [Nina Teicholz - The Big Fat Surprise: Why Butter, Meat and Chees] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1779832999474",
+      "timestamp": "2026-05-26T22:03:19.474Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [Nina Teicholz - The Big Fat Surprise: Why Butter, Meat and Chees] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1779836474998",
+      "timestamp": "2026-05-26T23:01:14.998Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [Nina Teicholz - The Big Fat Surprise: Why Butter, Meat and Chees] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1779836662879",
+      "timestamp": "2026-05-26T23:04:22.879Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [Nina Teicholz - The Big Fat Surprise: Why Butter, Meat and Chees] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1779839564203",
+      "timestamp": "2026-05-26T23:52:44.203Z",
+      "level": "warn",
+      "source": "server",
+      "message": "Removed track: Book [Nina Teicholz - The Big Fat Surprise: Why Butter, Meat and Chees] and local files deleted."
+    },
+    {
+      "id": "log-1779839566036",
+      "timestamp": "2026-05-26T23:52:46.036Z",
+      "level": "warn",
+      "source": "server",
+      "message": "Removed track: Book [Steve Jobs] and local files deleted."
+    },
+    {
+      "id": "log-1779839717871",
+      "timestamp": "2026-05-26T23:55:17.871Z",
+      "level": "info",
+      "source": "webtor",
+      "message": "Initiated real torrent stream: [Steve Jobs by Walter Isaacson EPUB] via WebTorrent client."
+    },
+    {
+      "id": "log-1779839731778",
+      "timestamp": "2026-05-26T23:55:31.778Z",
+      "level": "warn",
+      "source": "webtor",
+      "message": "Removed torrent download: [Nina Teicholz - The Big Fat Surprise: Why Butter, Meat and Chees]. Deleted cache."
+    },
+    {
+      "id": "log-1779839781116",
+      "timestamp": "2026-05-26T23:56:21.116Z",
+      "level": "info",
+      "source": "webtor",
+      "message": "Initiated real torrent stream: [The Big Fat Surprise - Why Butter, Meat and Cheese Belong in a H] via WebTorrent client."
+    },
+    {
+      "id": "log-1779840108325",
+      "timestamp": "2026-05-27T00:01:48.325Z",
+      "level": "info",
+      "source": "webtor",
+      "message": "Initiated real torrent stream: [The Complete Photo Guide To Great Sex] via WebTorrent client."
+    },
+    {
+      "id": "log-1779840208168",
+      "timestamp": "2026-05-27T00:03:28.168Z",
+      "level": "success",
+      "source": "webtor",
+      "message": "Torrent [The Complete Photo Guide To Great Sex] downloaded fully. Registered new E-book in Library!"
+    },
+    {
+      "id": "log-1779841271896",
+      "timestamp": "2026-05-27T00:21:11.896Z",
+      "level": "info",
+      "source": "server",
+      "message": "Manual organization complete: The complete photo guide to great sex moved to staged ebook repository."
+    },
+    {
+      "id": "log-1779885674315",
+      "timestamp": "2026-05-27T12:41:14.315Z",
+      "level": "success",
+      "source": "webtor",
+      "message": "Torrent [Steve Jobs by Walter Isaacson EPUB] downloaded fully. Registered new E-book in Library!"
+    },
+    {
+      "id": "log-1779885690654",
+      "timestamp": "2026-05-27T12:41:30.654Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [Steve Jobs by Walter Isaacson] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1779886512447",
+      "timestamp": "2026-05-27T12:55:12.447Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [Steve Jobs by Walter Isaacson] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1779886530895",
+      "timestamp": "2026-05-27T12:55:30.895Z",
+      "level": "warn",
+      "source": "webtor",
+      "message": "Removed torrent download: [Steve Jobs by Walter Isaacson EPUB]. Deleted cache."
+    },
+    {
+      "id": "log-1779886530902",
+      "timestamp": "2026-05-27T12:55:30.902Z",
+      "level": "warn",
+      "source": "webtor",
+      "message": "Removed torrent download: [The Complete Photo Guide To Great Sex]. Deleted cache."
+    },
+    {
+      "id": "log-1779886561178",
+      "timestamp": "2026-05-27T12:56:01.178Z",
+      "level": "warn",
+      "source": "server",
+      "message": "Removed track: Book [Steve Jobs by Walter Isaacson] and local files deleted."
+    },
+    {
+      "id": "log-1779886563013",
+      "timestamp": "2026-05-27T12:56:03.013Z",
+      "level": "warn",
+      "source": "server",
+      "message": "Removed track: Book [The complete photo guide to great sex] and local files deleted."
+    },
+    {
+      "id": "log-1779886638294",
+      "timestamp": "2026-05-27T12:57:18.294Z",
+      "level": "info",
+      "source": "webtor",
+      "message": "Initiated real torrent stream: [Steve Jobs by Walter Isaacson EPUB] via WebTorrent client."
+    },
+    {
+      "id": "log-1779887462331",
+      "timestamp": "2026-05-27T13:11:02.331Z",
+      "level": "success",
+      "source": "webtor",
+      "message": "Torrent [Steve Jobs by Walter Isaacson EPUB] downloaded fully. Registered new E-book in Library!"
+    },
+    {
+      "id": "log-1779887468351",
+      "timestamp": "2026-05-27T13:11:08.351Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [Steve Jobs by Walter Isaacson] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1779887479561",
+      "timestamp": "2026-05-27T13:11:19.561Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [Steve Jobs by Walter Isaacson] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1779887537476",
+      "timestamp": "2026-05-27T13:12:17.476Z",
+      "level": "info",
+      "source": "webtor",
+      "message": "Initiated real torrent stream: [The Complete Photo Guide To Great Sex] via WebTorrent client."
+    },
+    {
+      "id": "log-1779888292454",
+      "timestamp": "2026-05-27T13:24:52.454Z",
+      "level": "warn",
+      "source": "server",
+      "message": "Removed track: Book [Steve Jobs by Walter Isaacson] and local files deleted."
+    },
+    {
+      "id": "log-1779888386711",
+      "timestamp": "2026-05-27T13:26:26.712Z",
+      "level": "warn",
+      "source": "webtor",
+      "message": "Removed torrent download: [Steve Jobs by Walter Isaacson EPUB]. Deleted cache."
+    },
+    {
+      "id": "log-1779888391054",
+      "timestamp": "2026-05-27T13:26:31.054Z",
+      "level": "info",
+      "source": "webtor",
+      "message": "Initiated real torrent stream: [Steve Jobs by Walter Isaacson EPUB] via WebTorrent client."
+    },
+    {
+      "id": "log-1779889259305",
+      "timestamp": "2026-05-27T13:40:59.305Z",
+      "level": "success",
+      "source": "webtor",
+      "message": "Torrent [Steve Jobs by Walter Isaacson EPUB] downloaded fully. Registered new E-book in Library!"
+    },
+    {
+      "id": "log-1779889263471",
+      "timestamp": "2026-05-27T13:41:03.471Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [Steve Jobs by Walter Isaacson] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1779890225157",
+      "timestamp": "2026-05-27T13:57:05.157Z",
+      "level": "success",
+      "source": "webtor",
+      "message": "Torrent [The Complete Photo Guide To Great Sex] downloaded fully. Registered new E-book in Library!"
+    },
+    {
+      "id": "log-1779891804682",
+      "timestamp": "2026-05-27T14:23:24.682Z",
+      "level": "warn",
+      "source": "server",
+      "message": "Removed track: Book [The Complete Photo Guide to Great Sex] and local files deleted."
+    },
+    {
+      "id": "log-1779891819682",
+      "timestamp": "2026-05-27T14:23:39.682Z",
+      "level": "warn",
+      "source": "webtor",
+      "message": "Removed torrent download: [The Complete Photo Guide To Great Sex]. Deleted cache."
+    },
+    {
+      "id": "log-1779891819684",
+      "timestamp": "2026-05-27T14:23:39.684Z",
+      "level": "warn",
+      "source": "webtor",
+      "message": "Removed torrent download: [Steve Jobs by Walter Isaacson EPUB]. Deleted cache."
+    },
+    {
+      "id": "log-1779891841914",
+      "timestamp": "2026-05-27T14:24:01.914Z",
+      "level": "warn",
+      "source": "webtor",
+      "message": "Removed torrent download: [The Big Fat Surprise - Why Butter, Meat and Cheese Belong in a H]. Deleted cache."
+    },
+    {
+      "id": "log-1779891882532",
+      "timestamp": "2026-05-27T14:24:42.532Z",
+      "level": "info",
+      "source": "webtor",
+      "message": "Initiated real torrent stream: [The Complete Photo Guide To Great Sex] via WebTorrent client."
+    },
+    {
+      "id": "log-1779892246407",
+      "timestamp": "2026-05-27T14:30:46.407Z",
+      "level": "info",
+      "source": "webtor",
+      "message": "Initiated real torrent stream: [Eragon by Christopher Paolini MOBI] via WebTorrent client."
+    },
+    {
+      "id": "log-1779892632173",
+      "timestamp": "2026-05-27T14:37:12.173Z",
+      "level": "success",
+      "source": "webtor",
+      "message": "Torrent [Eragon by Christopher Paolini MOBI] downloaded fully. Registered new E-book in Library!"
+    },
+    {
+      "id": "log-1779919230613",
+      "timestamp": "2026-05-27T22:00:30.613Z",
+      "level": "warn",
+      "source": "webtor",
+      "message": "Removed torrent download: [The Complete Photo Guide To Great Sex]. Deleted cache."
+    },
+    {
+      "id": "log-1779919233525",
+      "timestamp": "2026-05-27T22:00:33.525Z",
+      "level": "warn",
+      "source": "webtor",
+      "message": "Removed torrent download: [Eragon by Christopher Paolini MOBI]. Deleted cache."
+    },
+    {
+      "id": "log-1779919256316",
+      "timestamp": "2026-05-27T22:00:56.316Z",
+      "level": "warn",
+      "source": "server",
+      "message": "Removed track: Book [Eragon by Christopher Paolini] and local files deleted."
+    },
+    {
+      "id": "log-1779919303187",
+      "timestamp": "2026-05-27T22:01:43.187Z",
+      "level": "success",
+      "source": "server",
+      "message": "Manual import: Book [The Fountainhead] added to library."
+    },
+    {
+      "id": "log-1779919387721",
+      "timestamp": "2026-05-27T22:03:07.721Z",
+      "level": "info",
+      "source": "webtor",
+      "message": "Initiated real torrent stream: [The Fountainhead by Ayn Rand (ePUB/Mobi)] via WebTorrent client."
+    },
+    {
+      "id": "log-1779920954477",
+      "timestamp": "2026-05-27T22:29:14.477Z",
+      "level": "warn",
+      "source": "webtor",
+      "message": "Removed torrent download: [The Fountainhead by Ayn Rand (ePUB/Mobi)]. Deleted cache."
+    },
+    {
+      "id": "log-1779921840133",
+      "timestamp": "2026-05-27T22:44:00.133Z",
+      "level": "info",
+      "source": "webtor",
+      "message": "Initiated real torrent stream: [The Fountainhead by Ayn Rand (ePUB/Mobi)] via WebTorrent client."
+    },
+    {
+      "id": "log-1779922049040",
+      "timestamp": "2026-05-27T22:47:29.040Z",
+      "level": "success",
+      "source": "webtor",
+      "message": "Torrent [The Fountainhead by Ayn Rand] downloaded fully. Registered new E-book in Library!"
+    },
+    {
+      "id": "log-1779922053953",
+      "timestamp": "2026-05-27T22:47:33.953Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead by Ayn Rand (/Mobi)] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1779922573819",
+      "timestamp": "2026-05-27T22:56:13.819Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead by Ayn Rand (/Mobi)] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1779922574744",
+      "timestamp": "2026-05-27T22:56:14.744Z",
+      "level": "warn",
+      "source": "server",
+      "message": "Removed track: Book [The Fountainhead] and local files deleted."
+    },
+    {
+      "id": "log-1779928601490",
+      "timestamp": "2026-05-28T00:36:41.490Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead by Ayn Rand (/Mobi)] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1779928897602",
+      "timestamp": "2026-05-28T00:41:37.602Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead by Ayn Rand (/Mobi)] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1779930107039",
+      "timestamp": "2026-05-28T01:01:47.039Z",
+      "level": "success",
+      "source": "browser_sync",
+      "message": "Auto-Sync: Torrent download [The Fountainhead by Ayn Rand (/Mobi)] was successfully staged offline inside your browser secure database."
+    },
+    {
+      "id": "log-1779930742762",
+      "timestamp": "2026-05-28T01:12:22.762Z",
+      "level": "warn",
+      "source": "server",
+      "message": "Removed track: Book [The Fountainhead by Ayn Rand (/Mobi)] and local files deleted."
+    },
+    {
+      "id": "log-1779930820787",
+      "timestamp": "2026-05-28T01:13:40.787Z",
+      "level": "success",
+      "source": "server",
+      "message": "Manual import: Book [The Fountainhead] added to library."
+    },
+    {
+      "id": "log-1779939390267",
+      "timestamp": "2026-05-28T03:36:30.267Z",
+      "level": "info",
+      "source": "webtor",
+      "message": "Initiated real torrent stream: [Ayn Rand - The Fountainhead] via WebTorrent client."
+    },
+    {
+      "id": "log-1780091858498",
+      "timestamp": "2026-05-29T21:57:38.499Z",
+      "level": "warn",
+      "source": "webtor",
+      "message": "Torrent [Ayn Rand - The Fountainhead] stalled. Attempting tracker re-announce and restart (1/3)."
+    },
+    {
+      "id": "log-1780092038705",
+      "timestamp": "2026-05-29T22:00:38.707Z",
+      "level": "warn",
+      "source": "webtor",
+      "message": "Torrent [Ayn Rand - The Fountainhead] stalled. Attempting tracker re-announce and restart (2/3)."
+    },
+    {
+      "id": "log-1780092219931",
+      "timestamp": "2026-05-29T22:03:39.932Z",
+      "level": "warn",
+      "source": "webtor",
+      "message": "Torrent [Ayn Rand - The Fountainhead] stalled. Attempting tracker re-announce and restart (3/3)."
     }
   ],
   "config": {
     "webtorEnabled": true,
-    "localDownloadPath": "/data/download/"
+    "localDownloadPath": "/data/download/",
+    "deletedIndexerNames": []
   },
   "indexers": [
     {
@@ -269,7 +774,7 @@
       "enabled": true,
       "type": "native",
       "status": "online",
-      "lastChecked": "2026-05-24T15:46:33.978Z",
+      "lastChecked": "2026-05-29T22:03:21.311Z",
       "error": "Cloudflare Protected (But reachable)"
     },
     {
@@ -280,7 +785,7 @@
       "enabled": true,
       "type": "native",
       "status": "online",
-      "lastChecked": "2026-05-24T15:46:36.535Z"
+      "lastChecked": "2026-05-29T22:03:21.963Z"
     },
     {
       "id": "3",
@@ -290,7 +795,7 @@
       "enabled": true,
       "type": "native",
       "status": "online",
-      "lastChecked": "2026-05-24T15:46:39.041Z"
+      "lastChecked": "2026-05-29T22:03:22.191Z"
     },
     {
       "id": "4",
@@ -300,7 +805,7 @@
       "enabled": true,
       "type": "native",
       "status": "online",
-      "lastChecked": "2026-05-24T15:46:42.957Z"
+      "lastChecked": "2026-05-29T22:03:23.127Z"
     },
     {
       "id": "5",
@@ -310,7 +815,7 @@
       "enabled": true,
       "type": "native",
       "status": "online",
-      "lastChecked": "2026-05-24T15:46:43.504Z"
+      "lastChecked": "2026-05-29T22:03:23.438Z"
     },
     {
       "id": "6",
@@ -320,7 +825,7 @@
       "enabled": true,
       "type": "native",
       "status": "online",
-      "lastChecked": "2026-05-24T15:46:46.487Z"
+      "lastChecked": "2026-05-29T22:03:24.511Z"
     },
     {
       "id": "7",
@@ -330,7 +835,7 @@
       "enabled": true,
       "type": "native",
       "status": "online",
-      "lastChecked": "2026-05-24T15:46:48.418Z"
+      "lastChecked": "2026-05-29T22:03:25.771Z"
     },
     {
       "id": "8",
@@ -340,8 +845,19 @@
       "enabled": true,
       "type": "native",
       "status": "offline",
-      "lastChecked": "2026-05-24T15:47:03.426Z",
-      "error": "timeout of 15000ms exceeded"
+      "lastChecked": "2026-05-29T21:30:01.308Z",
+      "error": "timeout of 120000ms exceeded"
+    },
+    {
+      "id": "9",
+      "name": "Torlock",
+      "url": "https://www.torlock.com",
+      "apiKey": "",
+      "enabled": true,
+      "type": "native",
+      "status": "offline",
+      "lastChecked": "2026-05-29T21:31:08.853Z",
+      "error": "Request failed with status code 504"
     }
   ]
 }

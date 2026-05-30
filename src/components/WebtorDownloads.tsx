@@ -9,14 +9,17 @@ import { TorrentTask, IndexerSettings, Book } from '../types';
 import { 
   getDirectoryHandle, 
   verifyDirectoryPermission,
-  saveOfflineFile
+  saveOfflineFile,
+  saveFileHandle
 } from '../services/LocalFileService';
 import { 
   scanWatchFolder, 
   autoMapFiles, 
   organizeSingleFile, 
-  WatchFolderFile 
+  WatchFolderFile,
+  sanitizePathName
 } from '../services/LocalOrganizerService';
+import { extractFileMetadata, ExtractedMetadata } from '../services/ClientMetadataParser';
 
 interface WebtorDownloadsProps {
   tasks: TorrentTask[];
@@ -45,35 +48,128 @@ export default function WebtorDownloads({
   const [isOrganizerScanning, setIsOrganizerScanning] = useState(false);
   const [organizingFilesMap, setOrganizingFilesMap] = useState<{[filePath: string]: boolean}>({});
 
+  const [extractedMetadataMap, setExtractedMetadataMap] = useState<{[filePath: string]: ExtractedMetadata}>({});
+  const [parsingMetadataMap, setParsingMetadataMap] = useState<{[filePath: string]: boolean}>({});
+
+  const handleExtractMetadata = useCallback(async (file: WatchFolderFile) => {
+    if (parsingMetadataMap[file.path] || extractedMetadataMap[file.path]) return;
+    setParsingMetadataMap(prev => ({ ...prev, [file.path]: true }));
+    try {
+      const browserFile = await file.handle.getFile();
+      const meta = await extractFileMetadata(browserFile);
+      if (meta) {
+        setExtractedMetadataMap(prev => ({ ...prev, [file.path]: meta }));
+        
+        // Dry auto match based on extracted title
+        if (meta.title) {
+          const match = books.find(b => 
+            b.type === file.type && 
+            (b.title.toLowerCase().includes(meta.title!.toLowerCase()) || 
+             meta.title!.toLowerCase().includes(b.title.toLowerCase()))
+          );
+          if (match && !manualMappedBookIds[file.path]) {
+            setManualMappedBookIds(prev => ({ ...prev, [file.path]: match.id }));
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("[METADATA] Failed client-side extract:", file.name, e);
+    } finally {
+      setParsingMetadataMap(prev => ({ ...prev, [file.path]: false }));
+    }
+  }, [books, manualMappedBookIds, parsingMetadataMap, extractedMetadataMap]);
+
+  // Automatically trigger metadata extraction for any non-cover files detected in watch folder list
+  useEffect(() => {
+    watchFolderFiles.forEach(file => {
+      if (file.type !== 'cover' && !extractedMetadataMap[file.path] && !parsingMetadataMap[file.path]) {
+        handleExtractMetadata(file);
+      }
+    });
+  }, [watchFolderFiles, extractedMetadataMap, parsingMetadataMap, handleExtractMetadata]);
+
+  // Download Queue UI States
+  const [autoCleanCompleted, setAutoCleanCompleted] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('bookarr_auto_clean_completed') === 'true';
+    }
+    return false;
+  });
+  const [autoPullCompleted, setAutoPullCompleted] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('bookarr_auto_pull_completed') !== 'false'; // default to true
+    }
+    return true;
+  });
+  const [pullingTasksMap, setPullingTasksMap] = useState<{[taskId: string]: { percent: number; status: 'pulling' | 'completed' | 'failed'; message?: string }}>({});
+  const [expandedTasks, setExpandedTasks] = useState<{[taskId: string]: boolean}>({});
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [confirmClearCompleted, setConfirmClearCompleted] = useState<boolean>(false);
+  const [confirmDeleteAll, setConfirmDeleteAll] = useState<boolean>(false);
+
+  const toggleExpand = (taskId: string) => {
+    setExpandedTasks(prev => ({ ...prev, [taskId]: !prev[taskId] }));
+  };
+
+  const handleClearCompletedTasks = useCallback(() => {
+    const completed = tasks.filter(t => t.status === 'completed');
+    completed.forEach(task => {
+      onCancelTask(task.id);
+    });
+  }, [tasks, onCancelTask]);
+
+  const tasksStatusKey = JSON.stringify(tasks.map(t => `${t.id}-${t.status}`));
+
+  useEffect(() => {
+    if (autoCleanCompleted) {
+      const completed = tasks.filter(t => t.status === 'completed');
+      if (completed.length > 0) {
+        completed.forEach(task => {
+          onCancelTask(task.id);
+        });
+      }
+    }
+  }, [tasksStatusKey, autoCleanCompleted, onCancelTask]);
+
   // Handles & permissions
   const [watchDirHandle, setWatchDirHandle] = useState<FileSystemDirectoryHandle | null>(null);
+  const [watchInternalDirHandle, setWatchInternalDirHandle] = useState<FileSystemDirectoryHandle | null>(null);
   const [ebooksDirHandle, setEbooksDirHandle] = useState<FileSystemDirectoryHandle | null>(null);
   const [audiobooksDirHandle, setAudiobooksDirHandle] = useState<FileSystemDirectoryHandle | null>(null);
 
   const [dirHasPermission, setDirHasPermission] = useState<{[key: string]: boolean}>({
     watch: false,
+    watchInternal: false,
     ebooks: false,
     audiobooks: false
   });
 
   const [organizerStatusMessage, setOrganizerStatusMessage] = useState<string | null>(null);
+  const [isLoadingHandles, setIsLoadingHandles] = useState(true);
+  const rootName = typeof window !== 'undefined' ? localStorage.getItem('bookarr_root_name') : null;
 
   // Load and check directory handles
   const checkHandlesAndPermissions = useCallback(async (requestPermission: boolean = false) => {
     try {
       const watch = await getDirectoryHandle('watch');
+      const watchInternal = await getDirectoryHandle('watch_internal');
       const ebooks = await getDirectoryHandle('ebooks');
       const audiobooks = await getDirectoryHandle('audiobooks');
 
       setWatchDirHandle(watch);
+      setWatchInternalDirHandle(watchInternal);
       setEbooksDirHandle(ebooks);
       setAudiobooksDirHandle(audiobooks);
 
-      const status: {[key: string]: boolean} = { watch: false, ebooks: false, audiobooks: false };
+      const status: {[key: string]: boolean} = { watch: false, watchInternal: false, ebooks: false, audiobooks: false };
 
       if (watch) {
         const perm = await verifyDirectoryPermission(watch, true, requestPermission);
         status.watch = perm;
+      }
+      if (watchInternal) {
+        const perm = await verifyDirectoryPermission(watchInternal, true, requestPermission);
+        status.watchInternal = perm;
       }
       if (ebooks) {
         const perm = await verifyDirectoryPermission(ebooks, true, requestPermission);
@@ -88,7 +184,7 @@ export default function WebtorDownloads({
       return status;
     } catch (err) {
       console.error('Error checking handles and permissions:', err);
-      return { watch: false, ebooks: false, audiobooks: false };
+      return { watch: false, watchInternal: false, ebooks: false, audiobooks: false };
     }
   }, []);
 
@@ -97,22 +193,34 @@ export default function WebtorDownloads({
     setIsOrganizerScanning(true);
     try {
       const permStatus = await checkHandlesAndPermissions(askPermission);
-      if (!permStatus.watch) {
+      setIsLoadingHandles(false);
+
+      const watch = await getDirectoryHandle('watch');
+      const watchInternal = await getDirectoryHandle('watch_internal');
+
+      let combinedFiles: WatchFolderFile[] = [];
+
+      if (permStatus.watch && watch) {
+        const scanned = await scanWatchFolder(watch);
+        combinedFiles = [...combinedFiles, ...scanned];
+      }
+      if (permStatus.watchInternal && watchInternal) {
+        const scanned = await scanWatchFolder(watchInternal);
+        combinedFiles = [...combinedFiles, ...scanned];
+      }
+
+      if (!permStatus.watch && !permStatus.watchInternal) {
         setWatchFolderFiles([]);
-        setIsOrganizerScanning(false);
         return;
       }
 
-      const watch = await getDirectoryHandle('watch');
-      if (!watch) return;
-
-      const scannedFiles = await scanWatchFolder(watch);
-      const mapped = autoMapFiles(scannedFiles, books);
+      const mapped = autoMapFiles(combinedFiles, books);
       setWatchFolderFiles(mapped);
     } catch (e) {
       console.error('Watch directory scan failed:', e);
     } finally {
       setIsOrganizerScanning(false);
+      setIsLoadingHandles(false);
     }
   }, [books, checkHandlesAndPermissions]);
 
@@ -133,6 +241,93 @@ export default function WebtorDownloads({
   const unlockWatchFolder = async () => {
     await doFolderScan(true);
   };
+
+  const handlePullTorrentFiles = useCallback(async (task: TorrentTask) => {
+    let destFolderHandle = watchInternalDirHandle || watchDirHandle;
+    if (!destFolderHandle) {
+         console.warn('[STAGING] Staging handle is uninitialized. Skipping live staging sync.');
+         return;
+    }
+
+    const hasPerm = await verifyDirectoryPermission(destFolderHandle, true, false);
+    if (!hasPerm) {
+         console.warn('[STAGING] Local staging folder write permissions are locked.');
+         return;
+    }
+
+    setPullingTasksMap(prev => ({
+      ...prev,
+      [task.id]: { percent: 0, status: 'pulling' }
+    }));
+
+    try {
+      // Create subfolder named after the torrent task (to keep files grouped)
+      const taskFolderHandle = await destFolderHandle.getDirectoryHandle(sanitizePathName(task.name), { create: true });
+      
+      let totalFiles = task.files.length;
+      let completedFiles = 0;
+
+      for (const file of task.files) {
+        setPullingTasksMap(prev => ({
+          ...prev,
+          [task.id]: {
+             percent: Math.round((completedFiles / totalFiles) * 100),
+             status: 'pulling',
+             message: `Copying "${file.name}"...`
+          }
+        }));
+
+        const response = await fetch(`/api/files/${encodeURIComponent(file.name)}`);
+        if (!response.ok) {
+           throw new Error(`Failed to fetch file chunk from container storage: ${file.name}`);
+        }
+
+        const fileHandle = await taskFolderHandle.getFileHandle(file.name, { create: true });
+        const writable = await fileHandle.createWritable();
+        
+        const reader = response.body?.getReader();
+        if (reader) {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            await writable.write(value);
+          }
+        } else {
+          const blob = await response.blob();
+          await writable.write(blob);
+        }
+        await writable.close();
+        completedFiles++;
+      }
+
+      setPullingTasksMap(prev => ({
+        ...prev,
+        [task.id]: { percent: 100, status: 'completed' }
+      }));
+
+      // Refresh watch list
+      setTimeout(() => {
+        doFolderScan(false);
+      }, 500);
+
+    } catch (err: any) {
+       console.error("[STAGING] Local sync staging error:", err);
+       setPullingTasksMap(prev => ({
+         ...prev,
+         [task.id]: { percent: 0, status: 'failed', message: err.message || String(err) }
+       }));
+    }
+  }, [watchInternalDirHandle, watchDirHandle, doFolderScan]);
+
+  // Automate pulling of completed downloads on the client directly to browser staging folder
+  useEffect(() => {
+    if (autoPullCompleted && (watchInternalDirHandle || watchDirHandle)) {
+       const completedPendingPull = tasks.filter(t => t.status === 'completed' && !pullingTasksMap[t.id]);
+       completedPendingPull.forEach(task => {
+          handlePullTorrentFiles(task);
+       });
+    }
+  }, [tasksStatusKey, autoPullCompleted, pullingTasksMap, tasks, watchInternalDirHandle, watchDirHandle, handlePullTorrentFiles]);
 
   // Run file organization
   const handleOrganizeSingle = async (file: WatchFolderFile) => {
@@ -165,18 +360,64 @@ export default function WebtorDownloads({
     setOrganizerStatusMessage(`Sorting and sweeping [${file.name}]...`);
 
     try {
-      const result = await organizeSingleFile(file, watchDirHandle!, destHandle, targetBook);
+      const fallbackWatchDir = watchDirHandle || watchInternalDirHandle;
+      const result = await organizeSingleFile(file, fallbackWatchDir!, destHandle, targetBook);
       
       if (result.success) {
         setOrganizerStatusMessage(`Successfully cataloged: Moved to / ${targetBook.type === 'audiobook' ? 'Audiobooks' : 'Ebooks'} / ${result.destinationPath}`);
         
-        // Save the file contents persistently into IndexedDB mapped to this book ID,
-        // so the Library immediately shows it as available/playable and maps it correctly
+        // Register the file handle for direct access later, instead of saving the blob in browser storage
         try {
-          const fileObj = await file.handle.getFile();
-          await saveOfflineFile(targetBook.id, file.name, fileObj, result.destinationPath);
+          if (file.type === 'cover') {
+            if (result.fileObj) {
+              const reader = new FileReader();
+              reader.readAsDataURL(result.fileObj);
+              reader.onload = async () => {
+                const coverUrl = reader.result as string;
+                try {
+                  await fetch(`/api/books/${targetBook.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ coverUrl })
+                  });
+                  if (onReloadLibrary) onReloadLibrary();
+                } catch (e) {
+                  console.error("Failed to update cover url", e);
+                }
+              };
+            }
+          } else {
+            if (result.destFileHandle) {
+              await saveFileHandle(targetBook.id, result.destFileHandle);
+            }
+            
+            // Enrich database with client-side extracted metadata if present
+            const localMeta = extractedMetadataMap[file.path];
+            const updatePayload: any = { 
+              isDownloaded: true, 
+              filePath: result.destinationPath 
+            };
+            
+            if (localMeta) {
+              if (localMeta.coverUrl) {
+                updatePayload.coverUrl = localMeta.coverUrl;
+              }
+              if (localMeta.description && (!targetBook.description || targetBook.description.startsWith('No metadata found') || targetBook.description.startsWith('Point this book') || targetBook.description.length < 100)) {
+                updatePayload.description = localMeta.description;
+              }
+              if (localMeta.duration && targetBook.type === 'audiobook') {
+                updatePayload.duration = localMeta.duration;
+              }
+            }
+
+            await fetch(`/api/books/${targetBook.id}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(updatePayload)
+            });
+          }
         } catch (dbErr) {
-          console.error('Failed to register organized physical file inside IndexedDB:', dbErr);
+          console.error('Failed to register organized physical file handle inside IndexedDB:', dbErr);
         }
 
         // Log action back to server log system persistently!
@@ -245,13 +486,117 @@ export default function WebtorDownloads({
           <p className="text-[10px] font-mono text-neutral-500 uppercase tracking-wider">Local Disk Available</p>
           <p className="text-xl font-sans font-extrabold text-neutral-200 mt-1">{diskSpace}</p>
         </div>
-      </div>
-
-      {/* Main tasks panel */}
+      </div>      {/* Main tasks panel */}
       <div className="space-y-4 text-left">
-        <h3 className="font-sans font-bold text-sm text-neutral-300">
-          Downloading Queue / Torrent Tasks
-        </h3>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#222] pb-3">
+          <div className="flex items-center gap-2">
+            <h3 className="font-sans font-bold text-sm text-neutral-300">
+              Downloading Queue / Torrent Tasks
+            </h3>
+            {tasks.length > 0 && (
+              <span className="text-[10px] bg-neutral-900 border border-neutral-800 text-neutral-400 px-2 py-0.5 rounded-full font-mono font-bold">
+                {tasks.length}
+              </span>
+            )}
+          </div>
+          
+          {tasks.length > 0 && (
+            <div className="flex items-center gap-3.5 flex-wrap">
+              {/* Auto-Clean Switch */}
+              <label className="flex items-center gap-2 text-xs font-semibold text-neutral-400 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={autoCleanCompleted}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setAutoCleanCompleted(checked);
+                    localStorage.setItem('bookarr_auto_clean_completed', String(checked));
+                  }}
+                  className="rounded border-neutral-800 bg-[#141414] text-amber-500 focus:ring-amber-500 focus:ring-offset-[#111] h-3.5 w-3.5"
+                />
+                <span className="text-[11px] text-neutral-400 hover:text-neutral-200 transition">Auto-Clean Queue</span>
+              </label>
+
+              {/* Auto-Pull to Local Watch/Download Staging */}
+              <label className="flex items-center gap-2 text-xs font-semibold text-neutral-400 cursor-pointer select-none border-l border-neutral-800 pl-3">
+                <input
+                  type="checkbox"
+                  checked={autoPullCompleted}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setAutoPullCompleted(checked);
+                    localStorage.setItem('bookarr_auto_pull_completed', String(checked));
+                  }}
+                  className="rounded border-neutral-800 bg-[#141414] text-amber-500 focus:ring-amber-500 focus:ring-offset-[#111] h-3.5 w-3.5"
+                />
+                <span className="text-[11px] text-neutral-400 hover:text-neutral-200 transition" title="Automatically copy finished files to your local browser staging folder">Auto-Pull to Staging</span>
+              </label>
+
+              {/* Clear Completed action with confirmation */}
+              {tasks.some(t => t.status === 'completed') && (
+                confirmClearCompleted ? (
+                  <div className="flex items-center gap-1.5 bg-red-500/10 border border-red-500/30 px-2.5 py-1 rounded-lg text-xs animate-in fade-in duration-200">
+                    <span className="text-red-400 font-bold text-[11px]">Clear Completed?</span>
+                    <button
+                      onClick={() => {
+                        handleClearCompletedTasks();
+                        setConfirmClearCompleted(false);
+                      }}
+                      className="bg-red-500 hover:bg-red-650 text-white font-extrabold px-1.5 py-0.5 rounded text-[10px] uppercase cursor-pointer"
+                    >
+                      Yes
+                    </button>
+                    <button
+                      onClick={() => setConfirmClearCompleted(false)}
+                      className="bg-neutral-800 hover:bg-neutral-700 text-neutral-300 font-extrabold px-1.5 py-0.5 rounded text-[10px] uppercase cursor-pointer"
+                    >
+                      No
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setConfirmClearCompleted(true)}
+                    className="border border-red-500/20 bg-red-500/5 hover:bg-red-500/15 text-red-400 text-xs px-2.5 py-1 rounded-lg font-bold flex items-center gap-1.5 transition cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    Clear Completed
+                  </button>
+                )
+              )}
+
+              {/* Delete All action with confirmation */}
+              {confirmDeleteAll ? (
+                <div className="flex items-center gap-1.5 bg-red-500/10 border border-red-500/30 px-2.5 py-1 rounded-lg text-xs animate-in fade-in duration-200">
+                  <span className="text-red-400 font-bold text-[11px]">Delete All?</span>
+                  <button
+                    onClick={() => {
+                      tasks.forEach(task => onCancelTask(task.id));
+                      setConfirmDeleteAll(false);
+                    }}
+                    className="bg-red-500 hover:bg-red-650 text-white font-extrabold px-1.5 py-0.5 rounded text-[10px] uppercase cursor-pointer"
+                  >
+                    Yes, Delete All
+                  </button>
+                  <button
+                    onClick={() => setConfirmDeleteAll(false)}
+                    className="bg-neutral-800 hover:bg-neutral-700 text-neutral-300 font-extrabold px-1.5 py-0.5 rounded text-[10px] uppercase cursor-pointer"
+                  >
+                    No
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setConfirmDeleteAll(true)}
+                  className="border border-neutral-800 bg-neutral-900/50 hover:bg-neutral-800 text-neutral-400 text-xs px-2.5 py-1 rounded-lg font-bold flex items-center gap-1.5 transition cursor-pointer"
+                  title="Bulk delete and cancel all running/stored tasks"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Delete All
+                </button>
+              )}
+            </div>
+          )}
+        </div>
 
         {tasks.length === 0 ? (
           <div className="p-12 text-center bg-[#111] rounded-2xl border border-[#222]">
@@ -262,151 +607,267 @@ export default function WebtorDownloads({
             </p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-2.5">
             {tasks.map((task) => {
               const isCompleted = task.status === 'completed';
+              const isExpanded = !!expandedTasks[task.id];
               return (
                 <div
                   key={task.id}
-                  className="bg-[#121212] border border-[#222] p-5 rounded-2xl space-y-4 shadow-sm"
+                  className="relative pr-9 bg-[#121212] border border-[#222] p-3 rounded-xl transition duration-200 hover:border-neutral-800"
                 >
-                  {/* Task identity bar */}
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex-1 overflow-hidden">
+                  {/* Absolute Positioned Individual Trash with confirmation */}
+                  <div className="absolute top-2.5 right-2 z-10 flex items-center">
+                    {confirmDeleteId === task.id ? (
+                      <div className="flex items-center gap-1 bg-red-500/10 border border-red-500/30 px-1.5 py-0.5 rounded text-[10px] animate-in fade-in zoom-in duration-200">
+                        <span className="text-red-400 font-bold font-sans text-[8px]">Delete?</span>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onCancelTask(task.id);
+                            setConfirmDeleteId(null);
+                          }}
+                          className="bg-red-500 hover:bg-red-650 text-white font-extrabold px-1 rounded text-[7px] uppercase cursor-pointer"
+                        >
+                          Yes
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setConfirmDeleteId(null);
+                          }}
+                          className="bg-neutral-800 hover:bg-neutral-700 text-neutral-300 font-extrabold px-1 rounded text-[7px] uppercase cursor-pointer"
+                        >
+                          No
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setConfirmDeleteId(task.id);
+                        }}
+                        className="text-neutral-500 hover:text-red-400 p-1 hover:bg-neutral-800 rounded transition cursor-pointer"
+                        title="Delete torrent and cache directory"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Task Header Row (Compact view format) */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    {/* Identity Block */}
+                    <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         {isCompleted ? (
-                          <span className="flex items-center gap-1 text-[10px] bg-emerald-500/10 text-emerald-500 font-bold px-1.5 py-0.5 rounded uppercase tracking-wider font-mono">
-                            <CheckCircle2 className="w-3 h-3" /> Completed
+                          <span className="flex items-center gap-1 text-[9px] bg-emerald-500/10 text-emerald-500 font-bold px-1.5 py-0.5 rounded uppercase tracking-wider font-mono">
+                            <CheckCircle2 className="w-2.5 h-2.5" /> Completed
                           </span>
                         ) : task.status === 'connecting' ? (
-                          <span className="flex items-center gap-1 text-[10px] bg-blue-500/10 text-blue-500 font-bold px-1.5 py-0.5 rounded uppercase tracking-wider font-mono animate-pulse">
-                            <RefreshCw className="w-3 h-3 animate-spin" /> Connecting
+                          <span className="flex items-center gap-1 text-[9px] bg-blue-500/10 text-blue-500 font-bold px-1.5 py-0.5 rounded uppercase tracking-wider font-mono animate-pulse">
+                            <RefreshCw className="w-2.5 h-2.5 animate-spin" /> Connecting
                           </span>
                         ) : task.status === 'stalled' ? (
-                          <span className="flex items-center gap-1 text-[10px] bg-amber-500/10 text-amber-500 font-bold px-1.5 py-0.5 rounded uppercase tracking-wider font-mono">
-                            <ShieldAlert className="w-3 h-3" /> Stalled
+                          <span className="flex items-center gap-1 text-[9px] bg-amber-500/10 text-amber-500 font-bold px-1.5 py-0.5 rounded uppercase tracking-wider font-mono">
+                            <ShieldAlert className="w-2.5 h-2.5" /> Stalled
                           </span>
                         ) : task.status === 'failed' ? (
-                          <span className="flex items-center gap-1 text-[10px] bg-red-500/10 text-red-500 font-bold px-1.5 py-0.5 rounded uppercase tracking-wider font-mono">
-                            <ShieldAlert className="w-3 h-3" /> Failed
+                          <span className="flex items-center gap-1 text-[9px] bg-red-500/10 text-red-500 font-bold px-1.5 py-0.5 rounded uppercase tracking-wider font-mono">
+                            <ShieldAlert className="w-2.5 h-2.5" /> Failed
                           </span>
                         ) : (
-                          <span className="flex items-center gap-1 text-[10px] bg-amber-500/10 text-amber-500 font-bold px-1.5 py-0.5 rounded uppercase tracking-wider font-mono animate-pulse">
-                            <Download className="w-3 h-3" /> Streaming
+                          <span className="flex items-center gap-1 text-[9px] bg-amber-500/10 text-amber-500 font-bold px-1.5 py-0.5 rounded uppercase tracking-wider font-mono animate-pulse">
+                            <Download className="w-2.5 h-2.5" /> Streaming
                           </span>
                         )}
                         <span className="text-[10px] text-neutral-500 font-mono">
-                          Indexer Source: {task.indexer}
+                          {task.indexer}
                         </span>
                         {task.retryCount && task.retryCount > 0 && (
-                           <span className="text-[9px] text-neutral-600 bg-neutral-900 px-1 py-0.5 rounded">
-                             Retry Attempt: {task.retryCount}
-                           </span>
+                          <span className="text-[8px] text-neutral-600 bg-neutral-900 px-1 py-0.5 rounded font-mono">
+                            Retry: {task.retryCount}
+                          </span>
+                        )}
+                        {!isCompleted && task.status !== 'failed' && (
+                          <span className="text-[10px] text-[#888] font-mono hidden md:inline">
+                             · DL: {task.downloadSpeed} · peers: {task.numPeers || 0}
+                          </span>
                         )}
                       </div>
-                      <h4 className="font-sans font-bold text-sm text-neutral-200 truncate mt-1">
+                      
+                      <h4 
+                        onClick={() => toggleExpand(task.id)}
+                        className="font-sans font-bold text-xs text-neutral-200 truncate mt-1 cursor-pointer hover:text-amber-500 transition pr-4" 
+                        title={task.name}
+                      >
                         {task.name}
                       </h4>
-                      <div className="flex items-center gap-1.5 mt-1">
-                         <Database size={10} className="text-neutral-600" />
-                         <span className="text-[9px] font-mono text-neutral-600 truncate uppercase">
-                           Locally stored in: /data/bookarr/download/{task.name}
-                         </span>
-                      </div>
                     </div>
 
-                    <div className="flex items-center gap-1 shrink-0">
-                      {(task.status === 'stalled' || task.status === 'failed' || (task.status === 'downloading' && task.progress === 0)) && onRetryTask && (
+                    {/* Progress Slider and Controls */}
+                    <div className="flex items-center justify-between sm:justify-end gap-3.5 shrink-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-mono text-neutral-400 font-bold w-9 text-right">{task.progress}%</span>
+                        <div className="w-16 sm:w-28 bg-[#1e1e1e] h-1.5 rounded-full overflow-hidden">
+                          <div
+                            style={{ width: `${task.progress}%` }}
+                            className={`h-full transition-all duration-300 ${
+                              isCompleted ? 'bg-emerald-500' : 'bg-amber-500'
+                            }`}
+                          />
+                        </div>
+                        <span className="text-[10px] font-mono text-neutral-500 hidden sm:inline">{task.size}</span>
+                      </div>
+
+                      {/* Mini actions */}
+                      <div className="flex items-center gap-0.5 shrink-0">
+                        {(task.status === 'stalled' || task.status === 'failed' || (task.status === 'downloading' && task.progress === 0)) && onRetryTask && (
+                          <button
+                            onClick={() => onRetryTask(task.id)}
+                            className="text-neutral-400 hover:text-amber-500 p-1.5 hover:bg-neutral-800 rounded transition shrink-0 cursor-pointer"
+                            title="Force restart torrent with common trackers"
+                          >
+                            <RefreshCw className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+
                         <button
-                          onClick={() => onRetryTask(task.id)}
-                          className="text-neutral-400 hover:text-amber-500 p-2 hover:bg-neutral-800 rounded-lg transition shrink-0 cursor-pointer"
-                          title="Force restart torrent with common trackers"
+                          onClick={() => toggleExpand(task.id)}
+                          className="text-neutral-500 hover:text-neutral-200 p-1.5 hover:bg-neutral-800 rounded transition shrink-0 cursor-pointer flex items-center justify-center animate-pulse"
+                          title={isExpanded ? "Collapse Details" : "Expand Details"}
                         >
-                          <RefreshCw className="w-4 h-4" />
+                          <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
                         </button>
-                      )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Expanded detail views & folder files */}
+                  {isExpanded && (
+                    <div className="border-t border-[#222]/80 mt-2.5 pt-2.5 space-y-2.5">
                       
-                      <button
-                        onClick={() => onCancelTask(task.id)}
-                        className="text-neutral-500 hover:text-red-400 p-2 hover:bg-neutral-800 rounded-lg transition shrink-0 cursor-pointer"
-                        title="Delete torrent and cache directory"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
+                      {/* Physical disk path */}
+                      <div className="flex items-center gap-1.5 justify-between">
+                        <div className="flex items-center gap-1.5 text-[9px] font-mono text-neutral-500 uppercase">
+                           <Database size={10} className="text-neutral-600 mb-0.5" />
+                           <span className="truncate">Locally stored in: /data/bookarr/download/{task.name}</span>
+                        </div>
+                      </div>
 
-                  {/* Slider Progress Bar */}
-                  <div className="space-y-1.5">
-                    <div className="flex justify-between items-center text-xs font-mono text-neutral-500">
-                      <span>Progress: {task.progress}%</span>
-                      <span>{task.size} total</span>
-                    </div>
-                    <div className="w-full bg-[#1e1e1e] h-2 rounded-full overflow-hidden">
-                      <div
-                        style={{ width: `${task.progress}%` }}
-                        className={`h-full transition-all duration-300 ${
-                          isCompleted ? 'bg-emerald-500' : 'bg-amber-500'
-                        }`}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Speeds and Stats if downloading */}
-                  {!isCompleted && (
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-[#181818] p-3 rounded-lg text-xs font-mono text-neutral-400">
-                      <div>
-                        <span className="text-[10px] text-neutral-500 block uppercase">DL Speed</span>
-                        <span className="text-neutral-200 mt-0.5 block font-semibold">{task.downloadSpeed}</span>
-                      </div>
-                      <div>
-                        <span className="text-[10px] text-neutral-500 block uppercase">UL Speed</span>
-                        <span className="text-neutral-200 mt-0.5 block">{task.uploadSpeed}</span>
-                      </div>
-                      <div>
-                        <span className="text-[10px] text-neutral-500 block uppercase">ETA Remaining</span>
-                        <span className="text-neutral-200 mt-0.5 block font-semibold">{task.eta}</span>
-                      </div>
-                      <div>
-                        <span className="text-[10px] text-neutral-500 block uppercase">Connected peers</span>
-                        <span className="text-neutral-200 mt-0.5 block font-semibold">
-                          {task.numPeers || 0} active connections
-                        </span>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Files inside Torrent list */}
-                  <div className="space-y-1.5 border-t border-[#222] pt-3.5">
-                    <p className="text-[10px] font-mono text-neutral-500 uppercase tracking-widest pl-1 mb-1">
-                      Torrent Folder Contents
-                    </p>
-                    <div className="space-y-1">
-                      {task.files.map((file, i) => (
-                        <div
-                          key={i}
-                          className="flex justify-between items-center text-xs text-neutral-400 py-1.5 hover:bg-neutral-800 rounded px-1.5 border-b border-neutral-900 last:border-none"
-                        >
-                          <div className="flex items-center gap-2 truncate">
-                            {file.type === 'audio' ? (
-                              <FileAudio className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                            ) : file.type === 'ebook' ? (
-                              <FileText className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-                            ) : (
-                              <ChevronDown className="w-3.5 h-3.5 text-neutral-600 shrink-0 rotate-270" />
-                            )}
-                            <span className="truncate text-neutral-300 font-medium">{file.name}</span>
+                      {/* Stager Status banner */}
+                      {pullingTasksMap[task.id] && (
+                        <div className="p-3 rounded-xl border border-amber-500/20 bg-[#16130c] space-y-2">
+                          <div className="flex justify-between items-center text-[11px] font-sans">
+                            <span className="text-amber-400 font-bold flex items-center gap-2">
+                              <Sparkles className="w-3.5 h-3.5 animate-pulse shrink-0" />
+                              {pullingTasksMap[task.id].status === 'pulling' 
+                                ? 'Streaming Stream to Local Browser Staging...' 
+                                : pullingTasksMap[task.id].status === 'completed'
+                                ? 'Completed: Synced directly to local disk!'
+                                : 'Failed to Stream File'}
+                            </span>
+                            <span className="font-mono text-amber-500 font-bold">{pullingTasksMap[task.id].percent}%</span>
                           </div>
-                          <div className="flex items-center gap-3 font-mono text-[11px] shrink-0">
-                            <span className="text-neutral-500">{file.size}</span>
-                            <span className={file.progress === 100 ? 'text-emerald-500' : 'text-amber-500'}>
-                              {file.progress}%
+                          
+                          <div className="w-full bg-neutral-900 h-1.5 rounded-full overflow-hidden border border-neutral-850">
+                            <div 
+                              style={{ width: `${pullingTasksMap[task.id].percent}%` }}
+                              className="bg-amber-500 h-full transition-all duration-300"
+                            />
+                          </div>
+                          {pullingTasksMap[task.id].message && (
+                            <p className="text-[10px] text-neutral-400 font-mono italic">{pullingTasksMap[task.id].message}</p>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Manual Pull Action Button if completed and handle is ready & not pulled yet */}
+                      {isCompleted && !pullingTasksMap[task.id] && (watchInternalDirHandle || watchDirHandle) && (
+                        <div className="flex items-center justify-between p-3.5 rounded-xl bg-[#151515] border border-neutral-900 text-xs">
+                          <span className="text-neutral-400 text-[11px] font-medium font-sans">
+                            File downloaded on server staging. Pull directly to local browser staging handle.
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handlePullTorrentFiles(task)}
+                            className="bg-amber-500 hover:bg-amber-400 text-black px-3 py-1.5 rounded-lg text-[10px] font-extrabold uppercase cursor-pointer transition select-none flex items-center gap-1 shrink-0 ml-4"
+                          >
+                            <Download className="w-3 h-3" />
+                            Pull to Browser Staging
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Help warning if completed and no browser handle is synced */}
+                      {isCompleted && !watchInternalDirHandle && !watchDirHandle && (
+                        <div className="p-3.5 rounded-xl bg-orange-500/5 border border-orange-500/10 text-[11px] text-neutral-400 flex items-start gap-2.5">
+                          <HelpCircle className="w-4 h-4 text-orange-400 shrink-0 mt-0.5" />
+                          <div className="space-y-0.5">
+                            <p className="text-neutral-300 font-bold">Staging Folder Locked or Unconfigured</p>
+                            <p>To enable direct browser file transfer, go to the Settings page and select a Watch/Staging directory.</p>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Technical detail cards panel */}
+                      {!isCompleted && (
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-[#181818]/50 p-2 rounded-lg text-[9px] font-mono text-neutral-400 border border-neutral-900">
+                          <div>
+                            <span className="text-[9px] text-neutral-550 block uppercase">DL Speed</span>
+                            <span className="text-neutral-200 mt-0.5 block font-semibold">{task.downloadSpeed}</span>
+                          </div>
+                          <div>
+                            <span className="text-[9px] text-[#888] block uppercase">UL Speed</span>
+                            <span className="text-neutral-200 mt-0.5 block">{task.uploadSpeed}</span>
+                          </div>
+                          <div>
+                            <span className="text-[9px] text-[#888] block uppercase">ETA Remaining</span>
+                            <span className="text-neutral-200 mt-0.5 block font-semibold">{task.eta}</span>
+                          </div>
+                          <div>
+                            <span className="text-[9px] text-[#888] block uppercase">Connected peers</span>
+                            <span className="text-neutral-200 mt-0.5 block font-semibold">
+                              {task.numPeers || 0} active connections
                             </span>
                           </div>
                         </div>
-                      ))}
+                      )}
+
+                      {/* Files inside Torrent list */}
+                      <div className="space-y-1 bg-[#151515] p-2 rounded-lg border border-neutral-900">
+                        <p className="text-[9px] font-mono text-neutral-500 uppercase tracking-widest pl-1">
+                          Torrent Folder Contents ({task.files.length} files)
+                        </p>
+                        <div className="space-y-0.5 max-h-40 overflow-y-auto custom-scrollbar pr-0.5 divide-y divide-neutral-950">
+                          {task.files.map((file, i) => (
+                            <div
+                              key={i}
+                              className="flex justify-between items-center text-[10px] text-neutral-400 py-1 hover:bg-neutral-800/40 rounded px-1 transition"
+                            >
+                              <div className="flex items-center gap-2 truncate">
+                                {file.type === 'audio' ? (
+                                  <FileAudio className="w-3 h-3 text-amber-500 shrink-0" />
+                                ) : file.type === 'ebook' ? (
+                                  <FileText className="w-3 h-3 text-blue-400 shrink-0" />
+                                ) : (
+                                  <ChevronDown className="w-3 h-3 text-neutral-600 shrink-0 rotate-270" />
+                                )}
+                                <span className="truncate text-neutral-300 font-medium">{file.name}</span>
+                              </div>
+                              <div className="flex items-center gap-2.5 font-mono text-[9px] shrink-0 ml-2">
+                                <span className="text-neutral-500">{file.size}</span>
+                                <span className={file.progress === 100 ? 'text-emerald-500 font-semibold' : 'text-amber-500'}>
+                                  {file.progress}%
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
                     </div>
-                  </div>
+                  )}
                 </div>
               );
             })}
@@ -463,15 +924,35 @@ export default function WebtorDownloads({
           </div>
         )}
 
-        {!watchDirHandle ? (
+        {isLoadingHandles ? (
           <div className="bg-[#161616] border border-neutral-900 rounded-xl p-6 text-center space-y-3">
-            <ShieldAlert className="w-8 h-8 text-amber-500/60 mx-auto" />
+            <RefreshCw className="w-8 h-8 text-amber-500/60 mx-auto animate-spin" />
             <div className="space-y-1">
-              <p className="text-xs font-bold text-neutral-200">Local Organizer Disconnected</p>
-              <p className="text-[11px] text-neutral-500 max-w-sm mx-auto">Configure a Watch Directory and organized destination paths in the Settings menu to enable automated file renaming and sorting.</p>
+              <p className="text-xs font-bold text-neutral-200">Verifying Local Storage Connections...</p>
+              <p className="text-[11px] text-neutral-500">Checking device folder links and directory authorization...</p>
             </div>
           </div>
-        ) : !dirHasPermission.watch ? (
+        ) : (!watchDirHandle && !watchInternalDirHandle) ? (
+          rootName ? (
+            <div className="bg-[#161616] border border-neutral-900 rounded-xl p-6 text-center space-y-4">
+              <FolderClosed className="w-8 h-8 text-amber-500/60 mx-auto" />
+              <div className="space-y-1">
+                <p className="text-xs font-bold text-neutral-200">Storage Root "{rootName}" Access Required</p>
+                <p className="text-[11px] text-neutral-500 max-w-sm mx-auto">
+                  Your browser storage root folder is configured, but active folder connections are currently locked by browser security. Go to the Settings page to verify & unlock the mapped directories.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-[#161616] border border-neutral-900 rounded-xl p-6 text-center space-y-3">
+              <ShieldAlert className="w-8 h-8 text-amber-500/60 mx-auto" />
+              <div className="space-y-1">
+                <p className="text-xs font-bold text-neutral-200">Local Organizer Disconnected</p>
+                <p className="text-[11px] text-neutral-500 max-w-sm mx-auto">Configure a Watch Directory and organized destination paths in the Settings menu to enable automated file renaming and sorting.</p>
+              </div>
+            </div>
+          )
+        ) : (!dirHasPermission.watch && !dirHasPermission.watchInternal) ? (
           <div className="bg-[#161616] border border-neutral-900 rounded-xl p-6 text-center space-y-4">
             <FolderClosed className="w-8 h-8 text-amber-500/60 mx-auto" />
             <div className="space-y-1">
@@ -483,20 +964,19 @@ export default function WebtorDownloads({
               onClick={unlockWatchFolder}
               className="bg-amber-500 text-black px-4 py-2 rounded-lg text-xs font-bold uppercase hover:bg-amber-400 transition cursor-pointer mx-auto block"
             >
-              Verify & Unlock Folder
+              Verify & Unlock Folders
             </button>
           </div>
         ) : watchFolderFiles.length === 0 ? (
           <div className="text-center py-8 text-neutral-550 space-y-2">
             <CheckCircle2 className="w-8 h-8 text-neutral-700 mx-auto" />
-            <p className="text-xs font-medium">Watch Folder Clean</p>
-            <p className="text-[10px] text-neutral-500 max-w-sm mx-auto font-sans leading-relaxed">No EPUB or Audiobook files are currently pending in <strong>{watchDirHandle.name}</strong>. Downloaded torrents will appear here when done!</p>
+            <p className="text-xs font-medium">Watch Folders Clean</p>
+            <p className="text-[10px] text-neutral-500 max-w-sm mx-auto font-sans leading-relaxed">No EPUB or Audiobook files are currently pending in your watch folders. Downloaded torrents will appear here when done!</p>
           </div>
         ) : (
           <div className="space-y-3">
             <div className="text-[10px] font-mono text-neutral-500 uppercase tracking-wider mb-1 flex items-center justify-between">
-              <span>Pending files in watch folder ({watchFolderFiles.length})</span>
-              <span className="text-neutral-400">Folder: / {watchDirHandle.name}</span>
+              <span>Pending files in watch folders ({watchFolderFiles.length})</span>
             </div>
 
             <div className="divide-y divide-neutral-950 border border-neutral-900 rounded-xl overflow-hidden bg-[#141414]">
@@ -509,21 +989,48 @@ export default function WebtorDownloads({
                 // Keep only books of same type for mapping
                 const filteredMappingBooks = books.filter(b => b.type === file.type);
 
+                const localMeta = extractedMetadataMap[file.path];
+                const isParsing = parsingMetadataMap[file.path];
+
                 return (
                   <div key={file.path} className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between p-4 gap-4 bg-[#141414] hover:bg-[#161616] transition text-left">
                     {/* Visual details column */}
                     <div className="flex items-center gap-3 min-w-0 flex-1">
-                      <div className="p-2 bg-neutral-950 border border-neutral-900 rounded-lg shrink-0">
-                        {file.type === 'audiobook' ? (
-                          <FileAudio className="w-5 h-5 text-amber-500" />
-                        ) : (
-                          <FileText className="w-5 h-5 text-blue-400" />
-                        )}
-                      </div>
+                      {localMeta?.coverUrl ? (
+                        <img 
+                          src={localMeta.coverUrl} 
+                          alt="Cover thumbnail" 
+                          referrerPolicy="no-referrer"
+                          className="w-10 h-14 object-cover rounded shadow-lg border border-neutral-800 shrink-0"
+                        />
+                      ) : (
+                        <div className="p-2 bg-neutral-950 border border-neutral-900 rounded-lg shrink-0">
+                          {file.type === 'audiobook' ? (
+                            <FileAudio className="w-5 h-5 text-amber-500" />
+                          ) : (
+                            <FileText className="w-5 h-5 text-blue-400" />
+                          )}
+                        </div>
+                      )}
+                      
                       <div className="truncate text-left min-w-0 flex-1">
                         <span className="text-xs font-bold text-neutral-200 block truncate" title={file.name}>
                           {file.name}
                         </span>
+
+                        {isParsing && (
+                          <div className="text-[10px] text-amber-500 flex items-center gap-1 mt-0.5 font-mono animate-pulse">
+                            <RefreshCw className="w-3 h-3 animate-spin" />
+                            Reading inner metadata...
+                          </div>
+                        )}
+
+                        {!isParsing && localMeta && (
+                          <div className="text-[10px] text-emerald-400 mt-1 bg-emerald-500/10 border border-emerald-500/15 rounded px-2 py-0.5 inline-block max-w-full truncate font-sans">
+                            ✨ Inner title: <strong className="font-bold text-emerald-300">{localMeta.title || 'Untitled'}</strong> {localMeta.author && `by ${localMeta.author}`} {localMeta.duration && `(${Math.round(localMeta.duration / 60)} min)`}
+                          </div>
+                        )}
+
                         <div className="flex items-center gap-2 mt-1">
                           <span className="text-[10px] font-mono text-neutral-500 bg-neutral-950 px-1.5 py-0.5 rounded border border-neutral-900">
                             {file.size}

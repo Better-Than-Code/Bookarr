@@ -37,8 +37,11 @@ import {
   updateOfflineFilePath, 
   getOfflineFile,
   getDirectoryHandle,
-  verifyDirectoryPermission
+  verifyDirectoryPermission,
+  saveFileHandle,
+  ensureFilePermission
 } from '../services/LocalFileService';
+import { autoRelinkLibrary } from '../services/LocalOrganizerService';
 
 interface LibraryDashboardProps {
   books: Book[];
@@ -49,6 +52,8 @@ interface LibraryDashboardProps {
   onSyncLibrary: () => void;
   isSyncing: boolean;
   onSearchTrackers: (query: string) => void;
+  offlineBooksMap?: {[bookId: string]: { name: string, filePath?: string }};
+  onRefreshOfflineBooks?: () => void;
 }
 
 export default function LibraryDashboard({
@@ -60,11 +65,14 @@ export default function LibraryDashboard({
   onSyncLibrary,
   isSyncing,
   onSearchTrackers,
+  offlineBooksMap: passedOfflineBooksMap,
+  onRefreshOfflineBooks
 }: LibraryDashboardProps) {
   const [activeFilter, setActiveFilter] = useState<'all' | 'audiobook' | 'ebook'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGenre, setSelectedGenre] = useState('All');
   const [selectedProgress, setSelectedProgress] = useState('All');
+  const [sortBy, setSortBy] = useState<'title' | 'recent' | 'progress'>('title');
   const [showImportForm, setShowImportForm] = useState(false);
   const [bookToDelete, setBookToDelete] = useState<Book | null>(null);
 
@@ -88,17 +96,22 @@ export default function LibraryDashboard({
   const [showSandboxHelper, setShowSandboxHelper] = useState<boolean>(false);
 
   // Offline browser and device path state
-  const [offlineBooksMap, setOfflineBooksMap] = useState<{[bookId: string]: { name: string, filePath?: string }}>({});
+  const [localOfflineBooksMap, setLocalOfflineBooksMap] = useState<{[bookId: string]: { name: string, filePath?: string }}>({});
+  const offlineBooksMap = passedOfflineBooksMap || localOfflineBooksMap;
   const [configuringBookPath, setConfiguringBookPath] = useState<Book | null>(null);
   const [customDevicePath, setCustomDevicePath] = useState<string>('');
   const [linkSuccessMessage, setLinkSuccessMessage] = useState<string | null>(null);
 
   const refreshOfflineBooks = async () => {
-    try {
-      const map = await getOfflineBooksMap();
-      setOfflineBooksMap(map);
-    } catch (e) {
-      console.error("Failed to load offline books map:", e);
+    if (onRefreshOfflineBooks) {
+      onRefreshOfflineBooks();
+    } else {
+      try {
+        const map = await getOfflineBooksMap();
+        setLocalOfflineBooksMap(map);
+      } catch (e) {
+        console.error("Failed to load offline books map:", e);
+      }
     }
   };
 
@@ -133,7 +146,7 @@ export default function LibraryDashboard({
   // Get all unique genres from book list
   const genres = ['All', ...Array.from(new Set(books.flatMap(b => b.genres)))];
 
-  // Filters setup
+  // Filters & Sorting setup
   const filteredBooks = books.filter(book => {
     const matchesSearch = book.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           book.author.toLowerCase().includes(searchQuery.toLowerCase());
@@ -146,6 +159,10 @@ export default function LibraryDashboard({
     else if (selectedProgress === 'Completed') matchesProgress = book.progress === 100;
 
     return matchesSearch && matchesType && matchesGenre && matchesProgress;
+  }).sort((a, b) => {
+    if (sortBy === 'title') return a.title.localeCompare(b.title);
+    if (sortBy === 'progress') return b.progress - a.progress;
+    return 0; // 'recent' would need a date field, skipping for now
   });
 
   // Separate in-progress books for a "Continue" shelf
@@ -162,19 +179,45 @@ export default function LibraryDashboard({
       let fileUrl = '';
 
       if (selectedFile) {
-        const formData = new FormData();
-        formData.append('file', selectedFile);
-        formData.append('type', newType);
-        
-        const uploadResp = await fetch('/api/upload', {
-          method: 'POST',
-          body: formData
-        });
-        
-        if (uploadResp.ok) {
-          const uploadData = await uploadResp.json();
-          filePath = uploadData.filePath;
-          fileUrl = uploadData.fileUrl;
+        let destFolderHandle = await getDirectoryHandle('watch_internal');
+        if (!destFolderHandle) {
+          destFolderHandle = await getDirectoryHandle('watch');
+        }
+
+        if (destFolderHandle) {
+          const hasPerm = await verifyDirectoryPermission(destFolderHandle, true, false);
+          if (hasPerm) {
+            try {
+              const fileHandle = await destFolderHandle.getFileHandle(selectedFile.name, { create: true });
+              const writable = await fileHandle.createWritable();
+              await writable.write(selectedFile);
+              await writable.close();
+              
+              filePath = `download/${selectedFile.name}`;
+              fileUrl = URL.createObjectURL(selectedFile);
+              console.log("[STAGING] Direct client upload successful to local staging handle:", destFolderHandle.name, selectedFile.name);
+            } catch (err) {
+              console.error("[STAGING] Local staging folder write failed, falling back to server-side upload:", err);
+            }
+          }
+        }
+
+        // Fallback to server side upload if staging handle is not available or writing failed
+        if (!filePath) {
+          const formData = new FormData();
+          formData.append('file', selectedFile);
+          formData.append('type', newType);
+          
+          const uploadResp = await fetch('/api/upload', {
+            method: 'POST',
+            body: formData
+          });
+          
+          if (uploadResp.ok) {
+            const uploadData = await uploadResp.json();
+            filePath = uploadData.filePath;
+            fileUrl = uploadData.fileUrl;
+          }
         }
       }
 
@@ -239,7 +282,7 @@ export default function LibraryDashboard({
     setIsSearchingOnline(true);
     setOnlineResults([]);
     try {
-      const resp = await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(onlineSearchQuery)}&limit=9`);
+      const resp = await fetch(`/api/metadata/search?q=${encodeURIComponent(onlineSearchQuery)}&limit=9`);
       if (resp.ok) {
         const data = await resp.json();
         const docs = data.docs || [];
@@ -380,14 +423,19 @@ export default function LibraryDashboard({
   const triggerBlobDownload = async (blob: Blob, book: Book) => {
     try {
       // 1. Try to save to linked "watch" directory (internal storage)
-      const watchHandle = await getDirectoryHandle('watch');
+      let watchHandle = await getDirectoryHandle('watch');
+      if (!watchHandle) {
+        watchHandle = await getDirectoryHandle('watch_internal');
+      }
       if (watchHandle) {
         const hasPerm = await verifyDirectoryPermission(watchHandle, true, true);
         if (hasPerm) {
           try {
-            const extension = book.fileUrl?.endsWith('.mp3') ? '.mp3' : '.epub';
+            const extParts = book.fileUrl?.split('.');
+            let ext = extParts && extParts.length > 1 ? extParts.pop() : null;
+            if (!ext) ext = book.type === 'audiobook' ? 'mp3' : 'epub';
             const safeTitle = book.title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-            const fileName = `${safeTitle}${extension}`;
+            const fileName = `${safeTitle}.${ext}`;
             
             const fileHandle = await watchHandle.getFileHandle(fileName, { create: true });
             const writable = await fileHandle.createWritable();
@@ -409,10 +457,12 @@ export default function LibraryDashboard({
       const blobUrl = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = blobUrl;
-      const extension = book.fileUrl?.endsWith('.mp3') ? '.mp3' : '.epub';
+      const extParts = book.fileUrl?.split('.');
+      let ext = extParts && extParts.length > 1 ? extParts.pop() : null;
+      if (!ext) ext = book.type === 'audiobook' ? 'mp3' : 'epub';
       
       const safeTitle = book.title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-      link.download = `${safeTitle}${extension}`;
+      link.download = `${safeTitle}.${ext}`;
       document.body.appendChild(link);
       link.click();
 
@@ -644,6 +694,23 @@ export default function LibraryDashboard({
           </button>
 
           <button
+            onClick={async () => {
+              const res = await fetch('/api/books/sync-all', { method: 'POST' });
+              if(res.ok) {
+                 onSyncLibrary();
+                 alert("Metadata sync complete!");
+              } else {
+                 alert("Metadata sync failed.");
+              }
+            }}
+            disabled={isSyncing}
+            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl border border-[#2d2d2d] bg-[#161616] hover:bg-[#202020] text-xs font-semibold text-neutral-300 hover:text-amber-400 transition cursor-pointer disabled:opacity-50"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            <span>Sync All</span>
+          </button>
+
+          <button
             onClick={() => setShowImportForm(!showImportForm)}
             className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-amber-500 text-black px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs font-semibold hover:bg-amber-400 transition cursor-pointer"
           >
@@ -713,7 +780,7 @@ export default function LibraryDashboard({
               </select>
             </div>
 
-            {/* Progress state select */}
+                    {/* Progress state select */}
             <div className="flex-1 sm:flex-none flex items-center gap-1.5 bg-[#1a1a1a] border border-[#2c2c2c] rounded-lg px-2.5 py-2">
               <SlidersHorizontal className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
               <select
@@ -722,9 +789,22 @@ export default function LibraryDashboard({
                 className="bg-transparent text-xs text-neutral-300 border-none focus:outline-none cursor-pointer w-full"
               >
                 <option value="All" className="bg-[#1a1a1a]">All Status</option>
-                <option value="Unread" className="bg-[#1a1a1a]">Unread (0%)</option>
+                <option value="Unread" className="bg-[#1a1a1a]">Unread</option>
                 <option value="In Progress" className="bg-[#1a1a1a]">In Progress</option>
                 <option value="Completed" className="bg-[#1a1a1a]">Completed</option>
+              </select>
+            </div>
+            
+            {/* Sorting select */}
+            <div className="flex-1 sm:flex-none flex items-center gap-1.5 bg-[#1a1a1a] border border-[#2c2c2c] rounded-lg px-2.5 py-2">
+              <RefreshCw className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as 'title' | 'recent' | 'progress')}
+                className="bg-transparent text-xs text-neutral-300 border-none focus:outline-none cursor-pointer w-full"
+              >
+                <option value="title" className="bg-[#1a1a1a]">Sort: Title</option>
+                <option value="progress" className="bg-[#1a1a1a]">Sort: Progress</option>
               </select>
             </div>
           </div>
@@ -981,7 +1061,7 @@ export default function LibraryDashboard({
                         type="file" 
                         onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
                         className="text-[10px] text-neutral-500 file:mr-4 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-semibold file:bg-neutral-800 file:text-neutral-300 hover:file:bg-neutral-700 cursor-pointer"
-                        accept={newType === 'audiobook' ? '.mp3,.m4b' : '.epub'}
+                        accept={newType === 'audiobook' ? '.mp3,.m4b,.aac' : '.epub,.pdf,.mobi,.azw3,.txt'}
                       />
                    </div>
                    {selectedFile && (
@@ -1064,7 +1144,10 @@ export default function LibraryDashboard({
       {/* Modern Confirmation Overlay Dialog */}
       {selectedBookDetails && (
         <BookDetailsModal
-          book={selectedBookDetails}
+          book={{
+            ...selectedBookDetails,
+            filePath: offlineBooksMap[selectedBookDetails.id]?.filePath || selectedBookDetails.filePath
+          }}
           onClose={() => setSelectedBookDetails(null)}
           onPlay={onPlayAudiobook}
           onRead={onReadEbook}
@@ -1376,7 +1459,7 @@ export default function LibraryDashboard({
                 <input 
                   type="file" 
                   id="native-device-file-picker" 
-                  accept={configuringBookPath.type === 'audiobook' ? '.mp3,.m4b,.aac' : '.epub'}
+                  accept={configuringBookPath.type === 'audiobook' ? '.mp3,.m4b,.aac' : '.epub,.pdf,.mobi,.azw3,.txt'}
                   className="hidden" 
                   onChange={async (e) => {
                     const files = e.target.files;
@@ -1554,7 +1637,7 @@ export default function LibraryDashboard({
                       <input 
                         type="file" 
                         id="wanted-file-picker" 
-                        accept={isAudio ? '.mp3,.m4b,.aac' : '.epub'}
+                        accept={isAudio ? '.mp3,.m4b,.aac' : '.epub,.pdf,.mobi,.azw3,.txt'}
                         className="hidden" 
                         onChange={async (e) => {
                           const files = e.target.files;

@@ -1,0 +1,12 @@
+import { KokoroTTS } from 'https://cdn.jsdelivr.net/npm/kokoro-js@1.2.1/dist/kokoro.web.js';
+(async () => {
+    console.log("Loading");
+    const tts = await KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX', { device: 'wasm' });
+    console.log("Generating");
+    const audio = await tts.generate('hello testing 123');
+    console.log("Keys:", Object.keys(audio));
+    console.log("audio prop:", audio.audio);
+    console.log("waveform prop:", audio.waveform);
+    console.log("data prop:", audio.data);
+    console.log("type of audio:", audio.constructor.name);
+})();

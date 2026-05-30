@@ -26,14 +26,20 @@ process.on('unhandledRejection', (reason, promise) => {
   console.error('Unhandled Rejection at:', promise, 'reason:', reason);
 });
 
-const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY,
-  httpOptions: {
-    headers: {
-      'User-Agent': 'aistudio-build',
-    }
+let _ai: any = null;
+function getAI() {
+  if (!_ai) {
+    _ai = new GoogleGenAI({
+      apiKey: process.env.GEMINI_API_KEY || 'dummy_key',
+      httpOptions: {
+        headers: {
+          'User-Agent': 'aistudio-build',
+        }
+      }
+    });
   }
-});
+  return _ai;
+}
 
 const agent = new https.Agent({
   rejectUnauthorized: false,
@@ -46,17 +52,11 @@ import WebTorrent from 'webtorrent';
 // @ts-ignore
 import EPub from 'epub';
 
-const client = new WebTorrent({
-  maxConns: 1000,
-  tracker: true,
-  dht: true,
-  lsd: true,
-  webSeeds: true
-});
-
 const PUBLIC_TRACKERS = [
   'udp://tracker.opentrackr.org:1337/announce',
+  'udp://open.demonii.com:1337/announce',
   'udp://open.stealth.si:80/announce',
+  'udp://tracker.publictracker.xyz:6969/announce',
   'udp://tracker.torrent.eu.org:451/announce',
   'udp://tracker.moeking.me:6969/announce',
   'udp://explodie.org:6969/announce',
@@ -64,12 +64,47 @@ const PUBLIC_TRACKERS = [
   'udp://tracker.openbittorrent.com:6969/announce',
   'udp://exodus.desync.com:6969/announce',
   'udp://tracker.thepiratebay.org:80/announce',
-  'udp://p4p.arenabg.com:1337/announce',
-  'http://tracker.openbittorrent.com:80/announce',
   'http://tracker.opentrackr.org:1337/announce',
   'wss://tracker.btorrent.xyz',
-  'wss://tracker.openwebtorrent.com'
+  'wss://tracker.openwebtorrent.com',
+  'wss://tracker.webtorrent.dev',
+  'wss://tracker.files.fm:7073/announce',
+  'udp://zer0day.ch:1337/announce',
+  'udp://wepzone.net:6969/announce',
+  'udp://tracker.theoks.net:6969/announce',
+  'udp://tracker.qu.ax:6969/announce',
+  'udp://tracker.iperson.xyz:6969/announce',
+  'udp://tracker.auctor.tv:6969/announce',
+  'udp://tracker.004430.xyz:1337/announce',
+  'udp://torrents.tmtime.dev:6969/announce',
+  'udp://leet-tracker.moe:1337/announce',
+  'udp://bittorrent-tracker.e-n-c-r-y-p-t.net:1337/announce',
+  'https://tracker.zhuqiy.com:443/announce',
+  'https://tracker.yemekyedim.com:443/announce',
+  'https://tracker.pmman.tech:443/announce',
+  'https://tracker.nekomi.cn:443/announce',
+  'https://torrents.tmtime.dev:443/announce'
 ];
+
+const client = new WebTorrent({
+  maxConns: 2000,          // Further increase max connections to discover more peers
+  downloadLimit: -1,       // Ensure unlimited download 
+  uploadLimit: 500000,     // Cap upload at 500kB/s to prioritize download bandwith
+  tracker: {
+    announce: PUBLIC_TRACKERS
+  },
+  dht: { 
+    concurrency: 128,
+    bootstrap: [
+      'router.bittorrent.com:6881',
+      'router.utorrent.com:6881',
+      'dht.transmissionbt.com:6881',
+      'dht.aelitis.com:6881'
+    ]
+  },// Boost DHT searches more to quickly find peers
+  lsd: true,
+  webSeeds: true
+});
 
 const OPENLIBRARY_TIMEOUT = 300000;
 
@@ -101,6 +136,31 @@ const extractInfoHash = (magnet: string): string | null => {
     if (!magnet || !magnet.startsWith('magnet:')) return null;
     const match = magnet.match(/xt=urn:btih:([a-fA-F0-9]+)/);
     return match ? match[1].toLowerCase() : null;
+};
+
+const bootstrapTorrentReady = (torrent: any) => {
+    let bootstrapCount = 0;
+    const bootstrapTimer = setInterval(() => {
+         bootstrapCount++;
+         if (bootstrapCount > 10 || torrent.numPeers > 0 || torrent.ready || torrent.destroyed) {
+             clearInterval(bootstrapTimer);
+             return;
+         }
+         console.log(`[WEBTOR-BOOTSTRAP] Forcing fast announce for ${torrent.name || torrent.infoHash} (attempt ${bootstrapCount})...`);
+         try {
+             PUBLIC_TRACKERS.forEach(tr => {
+                 if (typeof torrent.announce === 'function') {
+                     torrent.announce(tr);
+                 }
+             });
+             // Try to force direct announce tracker run
+             if (torrent.discovery && torrent.discovery.tracker && typeof torrent.discovery.tracker.announce === 'function') {
+                 torrent.discovery.tracker.announce();
+             }
+         } catch (e: any) {
+             console.log('[WEBTOR-BOOTSTRAP] Error in force announce:', e.message || e);
+         }
+    }, 2000); // Poll/announce every 2 seconds for the first 20 seconds to achieve super-fast initial bootstrap
 };
 
 client.on('error', (err: any) => {
@@ -156,6 +216,12 @@ const addTorrentToClient = (task: TorrentTask): any => {
         });
 
         console.log(`[WEBTOR] Initiated torrent add: ${task.name} (${torrent.infoHash || 'Pending Hash'})`);
+        
+        // Fast-bootstrap trackers and DHT to connect to seeds/peers immediately
+        if (torrent.discovery && torrent.discovery.tracker) {
+            torrent.discovery.tracker.announce();
+        }
+        bootstrapTorrentReady(torrent);
 
         // Log periodically if it stays stuck
         const stuckLogger = setInterval(() => {
@@ -264,6 +330,13 @@ const restartTorrent = (task: TorrentTask): any => {
 }
 
 const app = express();
+app.use((req, res, next) => {
+  // Required for SharedArrayBuffer / WASM Multi-threading
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+  res.setHeader('Cross-Origin-Embedder-Policy', 'credentialless');
+  try { require('fs').appendFileSync('proxy.log', '[EXPRESS URL LOG] ' + req.method + ' ' + req.url + '\n'); } catch(e) {}
+  next();
+});
 const PORT = 3000;
 
 app.use(express.json());
@@ -348,11 +421,13 @@ async function fixStuckBooks() {
   
   if (!process.env.GEMINI_API_KEY) return;
 
+  // Process stuck books one by one with a delay to avoid overloading
   for (const book of db.books) {
     const firstChapter = book.chapters?.[0];
     if (book.type === 'ebook' && firstChapter && firstChapter.content && firstChapter.content.includes('is being processed')) {
       console.log(`Fixing stuck book: ${book.title}`);
       try {
+        // Reduced timeout for startup fix to keep things moving
         const enriched = await enrichTorrentTaskWithMetadata(book.title, false, book.size, 'Auto-Repair');
         book.description = enriched.description;
         book.chapters = enriched.chapters;
@@ -360,6 +435,9 @@ async function fixStuckBooks() {
         book.author = enriched.author;
         book.coverUrl = enriched.coverUrl;
         changed = true;
+        
+        // Add a small pause between repairs
+        await new Promise(r => setTimeout(r, 1000));
       } catch (err) {
         console.error(`Failed to repair book ${book.title}:`, err);
       }
@@ -383,9 +461,7 @@ setTimeout(async () => {
 const DATA_DIR = path.join(process.cwd(), 'data');
 const BOOKARR_DIR = path.join(DATA_DIR, 'bookarr');
 const STORAGE_DIRS = {
-    download: path.join(BOOKARR_DIR, 'download'),
-    audiobooks: path.join(BOOKARR_DIR, 'audiobooks'),
-    ebooks: path.join(BOOKARR_DIR, 'ebooks')
+    download: path.join(BOOKARR_DIR, 'download')
 };
 const DB_FILE = path.join(DATA_DIR, 'db.json');
 
@@ -402,43 +478,20 @@ Object.values(STORAGE_DIRS).forEach(dir => {
     }
 });
 
+function sanitizePathName(name: string): string {
+  if (!name) return 'Unknown';
+  return name
+    .replace(/[\\/:*?"<>|]/g, '-') // Replace illegal characters with hyphens
+    .trim()
+    .replace(/\s+/g, ' '); // Clean redundant spacing
+}
+
 /**
  * Moves a downloaded file or directory into the organized bookarr hierarchy
  */
-function finalizeFileLocation(sourcePath: string, type: 'ebook' | 'audiobook'): string {
-    const targetDir = type === 'audiobook' ? STORAGE_DIRS.audiobooks : STORAGE_DIRS.ebooks;
-    const itemName = path.basename(sourcePath);
-    const targetPath = path.join(targetDir, itemName);
-
-    if (!fs.existsSync(sourcePath)) return sourcePath;
-    if (sourcePath === targetPath) return sourcePath;
-
-    try {
-        console.log(`[STORAGE] Moving finished item: ${itemName} -> ${type} staging`);
-        
-        // Ensure destination dir
-        if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
-
-        // Simple move
-        fs.renameSync(sourcePath, targetPath);
-        return targetPath;
-    } catch (e: any) {
-        console.warn(`[STORAGE] Rename failed (${e.message}), trying copy fallback...`);
-        try {
-             // Fallback for cross-device or permission issues if any
-             if (fs.lstatSync(sourcePath).isDirectory()) {
-                 // For directories, we'd need recursive copy, but in this environment rename usually works.
-                 // If it fails, we keep it in download for now to avoid complexity of recursive copy on server.
-                 return sourcePath;
-             }
-             fs.copyFileSync(sourcePath, targetPath);
-             fs.unlinkSync(sourcePath);
-             return targetPath;
-        } catch(ee) {
-             console.error('[STORAGE] Finalization failed entirely:', ee);
-             return sourcePath;
-        }
-    }
+function finalizeFileLocation(sourcePath: string, type: 'ebook' | 'audiobook', author?: string, title?: string): string {
+    console.log(`[STORAGE] Keeping file in server staging area: ${sourcePath}. File will be organized client-side on device storage.`);
+    return sourcePath;
 }
 
 // Initial Book Data to seed the local database
@@ -632,7 +685,8 @@ async function extractEpubContent(filePath: string): Promise<any[]> {
 
   return new Promise((resolve, reject) => {
     try {
-      const epub = new EPub(filePath) as any;
+      const EPubClass = (EPub as any).default || (EPub as any).EPub || EPub;
+      const epub = new EPubClass(filePath) as any;
       
       epub.on('end', async () => {
         console.log(`[EPUB-DEBUG] EPUB parsed. Metadata:`, epub.metadata?.title);
@@ -933,7 +987,7 @@ setInterval(async () => {
         let totalDuration = 0;
 
         try {
-          const downloadBase = path.join(DATA_DIR, 'downloads');
+          const downloadBase = STORAGE_DIRS.download;
           const taskDir = path.join(downloadBase, task.name);
           
           if (fs.existsSync(taskDir)) {
@@ -973,20 +1027,27 @@ setInterval(async () => {
                       title: audioFileName.replace(/\.mp3|\.m4b/gi, ''),
                       start: startTime,
                       end: startTime + chapterDuration,
-                      fileUrl: `/api/files/${audioFileName}`
+                      fileUrl: `/api/files/${encodeURIComponent(audioFileName)}`
                     });
                     startTime += chapterDuration;
                   }
                   totalDuration = startTime;
                 }
               } else {
-                const matched = items.find((f: string) => f.toLowerCase().endsWith('.epub'));
+                const ebookExts = ['.epub', '.pdf', '.mobi', '.azw3', '.txt', '.djvu'];
+                // Prioritize best ebook formats, falling back to others
+                const matched = ebookExts.reduce((found: string | undefined, ext: string) => {
+                  return found || items.find((f: string) => f.toLowerCase().endsWith(ext));
+                }, undefined);
+                
                 if (matched) {
                   const actualFile = path.join(taskDir, matched);
                   foundPath = actualFile;
                   foundUrl = `/api/files/${path.basename(actualFile)}`;
-                  console.log(`[STREAMING] Automated extraction for ${task.name}...`);
-                  realChapters = await extractEpubContent(actualFile);
+                  if (matched.toLowerCase().endsWith('.epub')) {
+                     console.log(`[STREAMING] Automated extraction for ${task.name}...`);
+                     realChapters = await extractEpubContent(actualFile);
+                  }
                 }
               }
             }
@@ -1010,9 +1071,10 @@ setInterval(async () => {
             ...task.enrichedBook,
             ...fileMetadata,
             id: `book-${Date.now()}`,
+            isDownloaded: false,
             filePath: foundPath || task.enrichedBook.filePath || '',
             fileUrl: foundUrl || task.enrichedBook.fileUrl || '',
-            chapters: realChapters.length > 0 ? realChapters : (task.enrichedBook.chapters || []),
+            chapters: realChapters.length > 0 ? realChapters : (fileMetadata.chapters || task.enrichedBook.chapters || []),
             duration: totalDuration || task.enrichedBook.duration || fileMetadata.duration
           };
         } else {
@@ -1028,27 +1090,27 @@ setInterval(async () => {
             genres: fileMetadata.genres || [],
             progress: 0,
             currentTime: 0,
-            isDownloaded: true,
+            isDownloaded: false,
             size: task.size,
             addedAt: new Date().toISOString(),
-            chapters: realChapters,
+            chapters: realChapters.length > 0 ? realChapters : (fileMetadata.chapters || []),
             filePath: foundPath || '',
             fileUrl: foundUrl || '',
-            duration: totalDuration || (isAudio ? 18000 : undefined)
+            duration: totalDuration || fileMetadata.duration || (isAudio ? 18000 : undefined)
           };
         }
         
         // Ensure new book has some fileUrl if possible, by guessing based on task name
         if (!newBook.fileUrl && task.files && task.files.length > 0) {
-           newBook.fileUrl = `/api/files/${task.files[0].name}`;
-           newBook.filePath = newBook.filePath || path.join(STORAGE_DIRS.download, task.name, task.files[0].name);
+           const ebookFile = task.files.find((f: any) => f.name.toLowerCase().match(/\.(epub|pdf|mobi|azw3|txt|djvu|mp3|m4b|aac)$/));
+           const nonImageFile = ebookFile || task.files.find((f: any) => !f.name.toLowerCase().match(/\.(jpg|jpeg|png|gif|webp)$/)) || task.files[0];
+           newBook.fileUrl = `/api/files/${encodeURIComponent(nonImageFile.name)}`;
+           newBook.filePath = newBook.filePath || path.join(STORAGE_DIRS.download, task.name, nonImageFile.name);
         }
 
-        // Finalize storage location!
-        if (newBook.filePath && fs.existsSync(newBook.filePath)) {
-            const finalPath = finalizeFileLocation(newBook.filePath, newBook.type);
-            newBook.filePath = finalPath;
-            newBook.fileUrl = `/api/files/${path.basename(finalPath)}`;
+        // Keep files in temporary STAGING context under STORAGE_DIRS.download on server
+        if (newBook.filePath) {
+            newBook.fileUrl = `/api/files/${encodeURIComponent(path.basename(newBook.filePath))}`;
         }
 
         db.books.push(newBook);
@@ -1080,9 +1142,215 @@ setInterval(async () => {
     db.torrentTasks = updatedTasks;
     saveDB(db);
   }
-}, 3000);
+}, 1500);
 
 // API Endpoints for Bookrr
+
+const MODELS_CACHE_DIR = path.join(process.cwd(), 'data', 'models');
+if (!fs.existsSync(MODELS_CACHE_DIR)) {
+  fs.mkdirSync(MODELS_CACHE_DIR, { recursive: true });
+}
+
+app.options(['/api/proxy-hf/*', '/api/models/*'], (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Range');
+  res.setHeader('Access-Control-Expose-Headers', 'Content-Length, Content-Type, Content-Range, Accept-Ranges, ETag');
+  res.sendStatus(204);
+});
+
+// Proxy for Hugging Face to bypass 401/CORS issues in some environments and cache locally
+app.get(['/api/proxy-hf/*', '/api/models/*'], async (req, res) => {
+  fs.appendFileSync('proxy.log', `[${new Date().toISOString()}] Incoming request: ${req.url}\n`);
+  let targetPath = req.params[0];
+  
+  // Rewrites for incorrect model IDs:
+  if (targetPath.includes('onnx-community/vits-ljspeech')) {
+    console.log(`[PROXY] Rewriting legacy/incorrect model ID: ${targetPath}`);
+    targetPath = targetPath.replace('onnx-community/vits-ljspeech', 'Xenova/vits-ljspeech');
+  }
+  if (targetPath.includes('onnx-community/mms-tts-eng')) {
+    console.log(`[PROXY] Rewriting legacy/incorrect model ID: ${targetPath}`);
+    targetPath = targetPath.replace('onnx-community/mms-tts-eng', 'Xenova/mms-tts-eng');
+  }
+
+  // Pre-check for local cache
+  const localFileName = targetPath.replace(/\//g, '___');
+  const localFilePath = path.join(MODELS_CACHE_DIR, localFileName);
+  
+  if (fs.existsSync(localFilePath) && fs.statSync(localFilePath).size > 0) {
+    if (!req.headers.range) {
+       console.log(`[CACHE HIT] Serving from local disk: ${targetPath}`);
+    }
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Expose-Headers', 'Content-Length, Content-Type, Content-Range, Accept-Ranges, ETag');
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    return res.sendFile(localFilePath);
+  }
+
+  const url = `https://huggingface.co/${targetPath}`;
+  console.log(`[PROXY] Fetching: ${url} (TargetPath: ${targetPath})`);
+  
+  if (targetPath.includes('preprocessor_config.json')) {
+    if (targetPath.toLowerCase().includes('kokoro')) {
+      console.log(`[PROXY] Injecting safe dummy preprocessor_config for ${targetPath}`);
+      res.type('application/json');
+      res.send(JSON.stringify({
+        "feature_extractor_type": "SequenceFeatureExtractor",
+        "padding_value": 0.0,
+        "do_normalize": false,
+        "return_attention_mask": false
+      }));
+      return;
+    }
+  }
+  
+  // Pass through relevant incoming headers (like Range)
+  const incomingHeaders = req.headers || {};
+  const commonHeaders: Record<string, string> = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+    'Accept': '*/*, application/json, text/plain, */*',
+    'Accept-Language': 'en-US,en;q=0.9',
+    'Cache-Control': 'no-cache',
+    'Pragma': 'no-cache',
+    'Referer': 'https://huggingface.co/'
+  };
+  
+  // Forward Range header if present
+  if (incomingHeaders['range']) {
+      commonHeaders['Range'] = incomingHeaders['range'] as string;
+  }
+
+  try {
+    let response;
+    try {
+      console.log(`[PROXY] Global HF Resolve Attempt: ${targetPath}`);
+      response = await axios({
+        method: 'get',
+        url: url,
+        responseType: 'stream',
+        decompress: false,
+        validateStatus: (status) => status < 500, // Do not throw on 4xx like 404
+        timeout: 600000, 
+        headers: {
+            ...commonHeaders,
+            'Accept-Encoding': 'identity'
+        }
+      });
+      if (response.status === 401 || response.status === 403 || response.status === 429) {
+          throw { response: { status: response.status } };
+      }
+      console.log(`[PROXY] Global HF Success for ${targetPath}`);
+    } catch (e: any) {
+      // If Global HF fails with 401/403/5xx, try HF Mirror immediately
+      // Explicitly delete any potential Authorization header
+      delete e.config?.headers?.Authorization;
+      if (!e.response || e.response.status === 401 || e.response.status === 403 || e.response.status === 429 || e.response.status >= 500 || e.message?.includes('timeout')) {
+        console.warn(`[PROXY] Global HF failed (${e.response?.status || 'network error'}). Falling back to Mirror for: ${targetPath}`);
+        const mirrorUrl = `https://hf-mirror.com/${targetPath}`;
+        try {
+          response = await axios({
+            method: 'get',
+            url: mirrorUrl,
+            responseType: 'stream',
+            decompress: false,
+            validateStatus: (status) => status < 500,
+            timeout: 600000,
+            headers: {
+               ...commonHeaders,
+               'Accept-Encoding': 'identity'
+            }
+          });
+          if (response.status === 401 || response.status === 403 || response.status === 429) {
+             throw { response: { status: response.status } };
+          }
+          console.log(`[PROXY] Mirror Success for ${targetPath}`);
+        } catch (mirrorError: any) {
+          console.error(`[PROXY] Mirror failed (${mirrorError.response?.status || 'network error', mirrorError.message}). Last resort: ModelScope.`);
+          const parts = targetPath.split('/');
+          // Typical: onnx-community/vits-ljspeech/resolve/main/config.json
+          const org = parts[0];
+          const repo = parts[1];
+          const revision = parts[3] || 'master';
+          const file = parts.slice(4).join('/');
+          
+          const modelScopeUrl = `https://www.modelscope.cn/api/v1/models/${org}/${repo}/repo?Revision=${revision}&FilePath=${encodeURIComponent(file)}`;
+          
+          try {
+            response = await axios({
+              method: 'get',
+              url: modelScopeUrl,
+              responseType: 'stream',
+              decompress: false,
+              httpsAgent: agent,
+              validateStatus: (status) => status < 500,
+              timeout: 600000,
+              headers: {
+                 ...commonHeaders,
+                 'Accept-Encoding': 'identity'
+              }
+            });
+            if (response.status === 401 || response.status === 403 || response.status === 429) {
+                throw { response: { status: response.status } };
+            }
+            console.log(`[PROXY] ModelScope Success for ${targetPath}`);
+          } catch (modelScopeError: any) {
+            console.warn(`[PROXY] ModelScope also failed (${modelScopeError.response?.status || 'network error'}).`);
+            const finalStatus = modelScopeError.response?.status || 404;
+            const finalError: any = new Error(`All proxies failed for ${targetPath}`);
+            finalError.response = { status: finalStatus };
+            throw finalError;
+          }
+        }
+      } else {
+        throw e;
+      }
+    }
+
+    if (!response) throw new Error('Proxy returned empty response after fallbacks');
+
+    // Pass along important headers
+    const allowedHeaders = ['content-type', 'content-length', 'etag', 'last-modified', 'content-range', 'accept-ranges'];
+    Object.entries(response.headers).forEach(([key, value]) => {
+      if (allowedHeaders.includes(key.toLowerCase())) {
+        res.setHeader(key, value as any);
+      }
+    });
+    
+    // Pass through status code (e.g. 206 Partial Content)
+    res.status(response.status || 200);
+    
+    // Add CORS
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Expose-Headers', 'Content-Length, Content-Type, Content-Range, Accept-Ranges, ETag');
+    if (response.status === 200 || response.status === 206) {
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    } else {
+        res.setHeader('Cache-Control', 'no-store, max-age=0');
+    }
+
+    if (!req.headers.range && response.status === 200) {
+      // Stream directly to client without dual-piping to disk to avoid backpressure stream deadlocks
+      response.data.pipe(res);
+      
+      response.data.on('error', (err: any) => {
+         console.error('[PROXY] Error piping data to client:', err.message);
+      });
+    } else {
+      response.data.pipe(res);
+    }
+  } catch (err: any) {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    const origStatus = err.response?.status || 500;
+    // Map any 401 or 403 (unauthorized/forbidden on non-existent files) to a 404 so transformers.js treats it as a standard missing file fallback
+    const mappedStatus = (origStatus === 401 || origStatus === 403) ? 404 : origStatus;
+    if (mappedStatus === 404) {
+        return res.status(404).send('Not Found on Hugging Face (Check your Model ID)');
+    }
+    console.error(`[PROXY] All attempts failed for ${targetPath}:`, err.message);
+    res.status(mappedStatus).send(err.message);
+  }
+});
 
 // 1. Get configs and logs and indexers
 app.get('/api/config', (req, res) => {
@@ -1119,11 +1387,33 @@ app.post('/api/config', (req, res) => {
   res.json({ success: true, config: db.config, indexers: db.indexers });
 });
 
+app.post('/api/books/sync-all', async (req, res) => {
+  const db = loadDB();
+  const booksToSync = db.books.filter((b: Book) => !b.description || b.description.includes('Manually cataloged') || b.description.includes('No metadata found') || !b.coverUrl || b.coverUrl.includes('unsplash'));
+  
+  console.log(`[Metadata] Sync all triggered for ${booksToSync.length} books.`);
+  
+  for (const book of booksToSync) {
+    try {
+      const enriched = await enrichMetadata({ title: book.title, type: book.type } as any);
+      book.description = enriched.description || book.description;
+      book.coverUrl = enriched.coverUrl || book.coverUrl;
+      book.author = enriched.author || book.author;
+      book.genres = enriched.genres || book.genres;
+    } catch (e) {
+      console.error(`[Metadata] Sync failed for ${book.title}`, e);
+    }
+  }
+  
+  saveDB(db);
+  res.json({ success: true, synced: booksToSync.length });
+});
+
 // 2. Books APIs - Get, Post, Update, Delete
 // Add Scan Library Endpoint
-app.post('/api/scan-library', (req, res) => {
+app.post('/api/scan-library', async (req, res) => {
   const db = loadDB();
-  const indexerDir = db.config?.localDownloadPath || DATA_DIR;
+  const indexerDir = db.config?.localDownloadPath || STORAGE_DIRS.download; // Prefer specific download dir
   
   if (!fs.existsSync(indexerDir)) {
     try {
@@ -1134,80 +1424,102 @@ app.post('/api/scan-library', (req, res) => {
   }
 
   let addedFiles = 0;
+  const maxDepth = 4;
 
-  const scanDir = async (dir: string) => {
-    if (!fs.existsSync(dir)) return;
-    const items = fs.readdirSync(dir);
+  const scanDir = async (dir: string, depth = 0) => {
+    if (depth > maxDepth || !fs.existsSync(dir)) return;
+    
+    let items;
+    try {
+       items = await fs.promises.readdir(dir);
+    } catch (e) {
+       console.error(`Failed readdir for ${dir}:`, e);
+       return;
+    }
     
     for (const item of items) {
       const fullPath = path.join(dir, item);
-      if (fs.lstatSync(fullPath).isDirectory()) {
-         // Avoid scanning known app directories that aren't the watch directory
-        await scanDir(fullPath);
+      let stats;
+      try {
+         stats = await fs.promises.lstat(fullPath);
+      } catch (e) { continue; }
+
+      if (stats.isDirectory()) {
+         // Avoid scanning system or massive directories
+         if (!item.startsWith('.') && item !== 'node_modules' && item !== 'dist') {
+            await scanDir(fullPath, depth + 1);
+         }
       } else {
         const lower = item.toLowerCase();
-        if (lower.endsWith('.epub') || lower.endsWith('.mp3') || lower.endsWith('.m4b')) {
+        if (lower.match(/\.(epub|pdf|mobi|azw3|txt|djvu|mp3|m4b|aac|flac|wav|ogg|m4a)$/)) {
           // Check if file is already in library
           const alreadyExists = db.books.some((b: Book) => {
              if (b.filePath && (b.filePath === fullPath || b.filePath === item || path.join(dir, b.filePath) === fullPath)) return true;
-             if (b.fileUrl && (b.fileUrl.endsWith(encodeURIComponent(item)) || b.fileUrl.includes(item))) return true;
-             const nameWithoutExt = item.replace(/\.[^/.]+$/, "");
-             if (b.title && nameWithoutExt.toLowerCase().includes(b.title.toLowerCase())) return true;
+             if (b.fileUrl && (b.fileUrl.endsWith(encodeURIComponent(item)) || b.fileUrl.includes(encodeURIComponent(item)))) return true;
              return false;
           });
 
           if (!alreadyExists) {
-            const isAudio = lower.endsWith('.mp3') || lower.endsWith('.m4b');
-            const nameWithoutExt = item.replace(/\.[^/.]+$/, "");
-            
-            let epubChapters: any[] = [];
-            if (!isAudio) {
-              console.log(`[SCANNER] Extracting EPUB chapters for ${fullPath}...`);
-              epubChapters = await extractEpubContent(fullPath);
-            }
+             console.log(`[SCANNER] Found new book item: ${item}`);
+             const isAudio = lower.endsWith('.mp3') || lower.endsWith('.m4b');
+             const nameWithoutExt = item.replace(/\.[^/.]+$/, "");
+             
+             let epubChapters: any[] = [];
+             let fileMeta: Partial<Book> = { title: nameWithoutExt, author: 'Unknown Author (Scanned)' };
+             
+             try {
+               fileMeta = await getMetadataFromFile(fullPath);
+             } catch (e) {
+               console.error('Failed scanning metadata in scanDir:', e);
+             }
 
-            const newBook: Book = {
-              id: `book-scan-${Date.now()}-${Math.floor(Math.random()*1000)}`,
-              title: nameWithoutExt,
-              author: 'Unknown Author (Scanned)',
-              type: isAudio ? 'audiobook' : 'ebook',
-              coverUrl: 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?q=80&w=200&auto=format&fit=crop',
-              description: `Automatically imported from watch folder: ${fullPath}`,
-              genres: ['Uncategorized'],
-              progress: 0,
-              currentTime: 0,
-              currentPage: 0,
-              fileUrl: `/api/stream/${encodeURIComponent(item)}`,
-              filePath: fullPath,
-              isDownloaded: true,
-              addedAt: new Date().toISOString(),
-              duration: isAudio ? 0 : undefined,
-              chapters: epubChapters.length > 0 ? epubChapters : undefined,
-            };
-            db.books.push(newBook);
-            addedFiles++;
+             if (!isAudio && lower.endsWith('.epub')) {
+               try {
+                 epubChapters = await extractEpubContent(fullPath);
+               } catch(ex) { console.error(`Epub extract failed during scan for ${item}`); }
+             }
+
+             const newBook: Book = {
+               id: `book-scan-${Date.now()}-${Math.floor(Math.random()*1000)}`,
+               title: fileMeta.title || nameWithoutExt,
+               author: fileMeta.author || 'Unknown Author (Scanned)',
+               type: isAudio ? 'audiobook' : 'ebook',
+               coverUrl: isAudio 
+                ? 'https://images.unsplash.com/photo-1478737270239-2f02b77fc618?q=80&w=200&auto=format&fit=crop'
+                : 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?q=80&w=200&auto=format&fit=crop',
+               description: fileMeta.description || `Automatically imported from local folder: ${fullPath}`,
+               genres: fileMeta.genres || ['Uncategorized'],
+               progress: 0,
+               currentTime: 0,
+               currentPage: 0,
+               fileUrl: `/api/files/${encodeURIComponent(item)}`,
+               filePath: fullPath,
+               isDownloaded: true,
+               addedAt: new Date().toISOString(),
+               duration: fileMeta.duration || (isAudio ? 0 : undefined),
+               chapters: epubChapters.length > 0 ? epubChapters : (fileMeta.chapters && fileMeta.chapters.length > 0 ? fileMeta.chapters : undefined),
+             };
+             db.books.push(newBook);
+             addedFiles++;
           }
         }
       }
     }
   };
 
-  scanDir(indexerDir).then(() => {
-    if (addedFiles > 0) {
-      db.logs.push({
-        id: `log-${Date.now()}`,
-        timestamp: new Date().toISOString(),
-        level: 'success',
-        source: 'filesystem',
-        message: `Library scan completed. Found and added ${addedFiles} new local files.`
-      });
-      saveDB(db);
-    }
-    res.json({ added: addedFiles });
-  }).catch((err: any) => {
-    console.error('Scan error:', err);
-    res.status(500).send('Error scanning directories: ' + err.message);
-  });
+  await scanDir(indexerDir);
+  
+  if (addedFiles > 0) {
+    db.logs.push({
+      id: `log-${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      level: 'success',
+      source: 'filesystem',
+      message: `Library scan completed. Found and added ${addedFiles} new local files.`
+    });
+    saveDB(db);
+  }
+  res.json({ success: true, added: addedFiles });
 });
 
 app.post('/api/logs', (req, res) => {
@@ -1238,6 +1550,55 @@ app.get('/api/books', (req, res) => {
         fileExists = fs.existsSync(fullPath) && fs.lstatSync(fullPath).isFile();
       } catch (e) {}
     }
+    
+    // Auto-heal missing file path if nested by torrent
+    if (!fileExists && book.fileUrl) {
+      const safeDecode = (str: string) => {
+          try { return decodeURIComponent(str); } catch { return str; }
+      };
+      const searchDirs = [
+          STORAGE_DIRS.download,
+          path.join(BOOKARR_DIR, 'audiobooks'), // Legacy fallback
+          path.join(BOOKARR_DIR, 'ebooks'),     // Legacy fallback
+          DATA_DIR
+      ];
+      const fileName = safeDecode(book.fileUrl.split('/').pop() || '');
+      if (fileName) {
+          const findFileRecursive = (dir: string): string | null => {
+              try {
+                  if (!fs.existsSync(dir)) return null;
+                  const items = fs.readdirSync(dir);
+                  for (const item of items) {
+                      const fullPath = path.join(dir, item);
+                      try {
+                          if (fs.lstatSync(fullPath).isDirectory()) {
+                              const found = findFileRecursive(fullPath);
+                              if (found) return found;
+                          } else if (item === fileName || fullPath.endsWith(fileName) || safeDecode(item) === safeDecode(fileName)) {
+                              return fullPath;
+                          }
+                      } catch (e) {
+                          continue;
+                      }
+                  }
+                  return null;
+              } catch (e) {
+                  return null;
+              }
+          };
+          for (const dir of searchDirs) {
+              const actualFile = findFileRecursive(dir);
+              if (actualFile) {
+                  book.filePath = actualFile;
+                  fileExists = true;
+                  db.books[db.books.findIndex((b: Book) => b.id === book.id)].filePath = actualFile;
+                  saveDB(db);
+                  break;
+              }
+          }
+      }
+    }
+    
     return { ...book, isDownloaded: fileExists };
   });
 
@@ -1338,8 +1699,10 @@ app.get('/api/search/stream', async (req, res) => {
   try {
     await searchAllIndexers({ query, type }, db.config, db.indexers, (results) => {
       res.write(`data: ${JSON.stringify(results)}\n\n`);
+      if ((res as any).flush) (res as any).flush();
     }, (status) => {
       res.write(`data: ${JSON.stringify({ status })}\n\n`);
+      if ((res as any).flush) (res as any).flush();
     });
     res.write('data: [DONE]\n\n');
     res.end();
@@ -1361,6 +1724,29 @@ app.get('/api/metadata', async (req, res) => {
         return res.json(enriched);
     } catch (err: any) {
         return res.status(500).json({ error: 'Failed to enrich metadata' });
+    }
+});
+
+// Proxy route for client-side OpenLibrary book searches to avoid CORS and sandbox fetch errors
+app.get('/api/metadata/search', async (req, res) => {
+    const q = (req.query.q || '').toString();
+    const limit = parseInt((req.query.limit || '9').toString(), 10);
+    if (!q) {
+        return res.json({ docs: [] });
+    }
+    try {
+        const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(q)}&limit=${limit}`;
+        const axiosResponse = await axios.get(url, {
+            timeout: 10000,
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'application/json'
+            }
+        });
+        return res.json(axiosResponse.data);
+    } catch (err: any) {
+        console.error(`[Metadata Proxy Search Error] Failed to fetch OpenLibrary search for "${q}":`, err.message || err);
+        return res.status(500).json({ error: 'Failed to search metadata source', details: err.message });
     }
 });
 
@@ -1399,6 +1785,8 @@ app.get('/api/torrents/inspect', async (req, res) => {
         deselect: true,
         announce: PUBLIC_TRACKERS
       });
+      // Aggressively boost tracking discovery to resolve files list instantly
+      bootstrapTorrentReady(infoTask);
     }
     
     const cleanup = () => {
@@ -1493,10 +1881,7 @@ app.post('/api/torrents', async (req, res) => {
             console.log(`Downloading real file to: ${dest}`);
             const success = await downloadDirectFile(finalUrl, dest, newTask.id);
             
-            if (success) {
-                // Move to organized storage
-                const finalDest = finalizeFileLocation(dest, isAudio ? 'audiobook' : 'ebook');
-
+             if (success) {
                 const innerDb = loadDB();
                 const task = innerDb.torrentTasks.find((t: any) => t.id === newTask.id);
                 if (task) {
@@ -1507,17 +1892,17 @@ app.post('/api/torrents', async (req, res) => {
                     const enrichedBook = await enrichTorrentTaskWithMetadata(safeTitle, isAudio, size, indexer);
                     
                     let realChapters = [];
-                    if (!isAudio && finalDest.endsWith('.epub')) {
-                        console.log(`Extracting text from real file: ${finalDest}`);
-                        realChapters = await extractEpubContent(finalDest);
+                    if (!isAudio && dest.endsWith('.epub')) {
+                        console.log(`Extracting text from real file: ${dest}`);
+                        realChapters = await extractEpubContent(dest);
                     }
 
                     const book: Book = {
                         ...enrichedBook,
                         id: `book-${Date.now()}`,
-                        isDownloaded: true,
-                        filePath: finalDest,
-                        fileUrl: `/api/files/${path.basename(finalDest)}`,
+                        isDownloaded: false,
+                        filePath: dest,
+                        fileUrl: `/api/files/${encodeURIComponent(path.basename(dest))}`,
                         chapters: realChapters.length > 0 ? realChapters : (enrichedBook.chapters || []),
                         addedAt: new Date().toISOString()
                     };
@@ -1527,7 +1912,7 @@ app.post('/api/torrents', async (req, res) => {
                         timestamp: new Date().toISOString(),
                         level: 'success',
                         source: 'server',
-                        message: `Direct Download [${safeTitle}] completed and organized into ${book.type} repository.`
+                        message: `Direct Download [${safeTitle}] completed and staged in database for browser offline caching.`
                     });
                     saveDB(innerDb);
                 }
@@ -1601,7 +1986,7 @@ app.post('/api/torrents', async (req, res) => {
               name: f.name,
               size: (f.length / (1024 * 1024)).toFixed(1) + ' MB',
               progress: 0,
-              type: f.name.toLowerCase().endsWith('.mp3') || f.name.toLowerCase().endsWith('.m4b') ? 'audio' : (f.name.toLowerCase().endsWith('.epub') ? 'ebook' : 'other')
+              type: f.name.toLowerCase().endsWith('.mp3') || f.name.toLowerCase().endsWith('.m4b') ? 'audio' : (f.name.toLowerCase().match(/\.(epub|pdf|mobi|azw3|txt|djvu)$/) ? 'ebook' : (f.name.toLowerCase().match(/\.(jpg|jpeg|png|webp|gif)$/) ? 'cover' : 'other'))
             }));
             saveDB(innerDb);
           }
@@ -1644,7 +2029,19 @@ app.delete('/api/torrents/:id', (req, res) => {
   const db = loadDB();
   const index = db.torrentTasks.findIndex((t: TorrentTask) => t.id === req.params.id);
   if (index !== -1) {
-    const name = db.torrentTasks[index].name;
+    const task = db.torrentTasks[index];
+    const name = task.name;
+    
+    // Attempt to locate and remove the active torrent from client
+    const torrent = client.torrents.find((t: any) => 
+        (t.magnetURI === task.magnetLink) || 
+        (t.infoHash === task.infoHash)
+    );
+    if (torrent) {
+        client.remove(torrent);
+        console.log(`[WEBTOR] Removed active torrent from client: ${name}`);
+    }
+
     db.torrentTasks.splice(index, 1);
     db.logs.push({
       id: `log-${Date.now()}`,
@@ -1703,43 +2100,132 @@ app.post('/api/torrents/:id/retry', (req, res) => {
     res.json({ success: true, message: 'Retry initiated' });
 });
 
+// Simple caching for TTS requests
+const ttsCache = new Map<string, Buffer>();
+
+// route for cached, lock-screen-compatible TTS proxy
+app.get('/api/tts', async (req, res) => {
+    const text = req.query.text as string;
+    const lang = (req.query.lang as string) || 'en';
+
+    if (!text) {
+        return res.status(400).send('Text is required');
+    }
+
+    const cacheKey = `${lang}:${text}`;
+    if (ttsCache.has(cacheKey)) {
+        console.log(`[TTS-API] Cache hit for: ${text.substring(0, 30)}...`);
+        res.setHeader('Content-Type', 'audio/mpeg');
+        res.setHeader('Cache-Control', 'public, max-age=86400');
+        return res.send(ttsCache.get(cacheKey));
+    }
+
+    try {
+        console.log(`[TTS-API] Fetching speech from Google for length: ${text.length}`);
+        const url = `https://translate.google.com/translate_tts?ie=UTF-8&tl=${encodeURIComponent(lang)}&client=tw-ob&q=${encodeURIComponent(text)}`;
+        const response = await axios({
+            method: 'get',
+            url,
+            responseType: 'arraybuffer',
+            headers: {
+                'Referer': 'https://translate.google.com/',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
+            },
+            timeout: 10000
+        });
+        const buffer = Buffer.from(response.data);
+        
+        // Cache the result (max 200 items to avoid memory issues)
+        if (ttsCache.size > 200) {
+            const firstKey = ttsCache.keys().next().value;
+            if (firstKey !== undefined) {
+                ttsCache.delete(firstKey);
+            }
+        }
+        ttsCache.set(cacheKey, buffer);
+
+        res.setHeader('Content-Type', 'audio/mpeg');
+        res.setHeader('Cache-Control', 'public, max-age=86400');
+        res.send(buffer);
+    } catch (err: any) {
+        console.error('Error in /api/tts proxy:', err.message);
+        res.status(500).send('Error generating speech');
+    }
+});
+
 // route to serve downloaded files
 app.get('/api/files/:name', (req, res) => {
-    const fileName = req.params.name;
+    const safeDecode = (str: string) => {
+        try { return decodeURIComponent(str); } catch { return str; }
+    };
+    const fileName = safeDecode(req.params.name);
+    console.log(`[FILE-API] Requesting: ${fileName}`);
     
     // Check all managed directories
     const searchDirs = [
-        STORAGE_DIRS.audiobooks,
-        STORAGE_DIRS.ebooks,
         STORAGE_DIRS.download,
+        path.join(BOOKARR_DIR, 'audiobooks'), // Legacy fallback
+        path.join(BOOKARR_DIR, 'ebooks'),     // Legacy fallback
         DATA_DIR // Legacy fallback
     ];
 
     // Check root bases first for performance
     for (const dir of searchDirs) {
         const rootPath = path.join(dir, fileName);
+        console.log(`[FILE-API] Checking: ${rootPath}`);
         if (fs.existsSync(rootPath) && fs.lstatSync(rootPath).isFile()) {
-            const isAudio = fileName.endsWith('.mp3') || fileName.endsWith('.m4b');
-            res.setHeader('Content-Type', isAudio ? 'audio/mpeg' : 'application/epub+zip');
+            console.log(`[FILE-API] Found: ${rootPath}`);
+            const lowerFileName = fileName.toLowerCase();
+            const isAudio = lowerFileName.endsWith('.mp3') || lowerFileName.endsWith('.m4b') || lowerFileName.endsWith('.aac');
+            const isPdf = lowerFileName.endsWith('.pdf');
+            const isImage = lowerFileName.match(/\.(jpg|jpeg|png|gif|webp)$/);
+            
+            let contentType = 'application/octet-stream';
+            if (isAudio) contentType = 'audio/mpeg';
+            else if (isPdf) contentType = 'application/pdf';
+            else if (isImage) contentType = `image/${lowerFileName.split('.').pop()?.replace('jpg', 'jpeg')}`;
+            else if (lowerFileName.endsWith('.mobi')) contentType = 'application/x-mobipocket-ebook';
+            else contentType = 'application/epub+zip';
+            
+            res.setHeader('Content-Type', contentType);
             res.setHeader('Accept-Ranges', 'bytes');
-            return res.sendFile(rootPath);
+            return res.sendFile(rootPath, (err) => {
+                if (err) {
+                    if (err.message === 'Request aborted' || err.message.includes('EPIPE')) {
+                        console.log(`[FILE-API] File transfer interrupted/aborted: ${rootPath}`);
+                    } else {
+                        console.error(`[FILE-API] Error sending file ${rootPath}:`, err);
+                        if (!res.headersSent) {
+                            res.status(500).send('Error sending file');
+                        }
+                    }
+                }
+            });
         }
     }
 
     // Recursive search fallback
     const findFileRecursive = (dir: string): string | null => {
-        if (!fs.existsSync(dir)) return null;
-        const items = fs.readdirSync(dir);
-        for (const item of items) {
-            const fullPath = path.join(dir, item);
-            if (fs.lstatSync(fullPath).isDirectory()) {
-                const found = findFileRecursive(fullPath);
-                if (found) return found;
-            } else if (item === fileName) {
-                return fullPath;
+        try {
+            if (!fs.existsSync(dir)) return null;
+            const items = fs.readdirSync(dir);
+            for (const item of items) {
+                const fullPath = path.join(dir, item);
+                try {
+                    if (fs.lstatSync(fullPath).isDirectory()) {
+                        const found = findFileRecursive(fullPath);
+                        if (found) return found;
+                    } else if (item === fileName || safeDecode(item) === safeDecode(fileName)) {
+                        return fullPath;
+                    }
+                } catch (e) {
+                    continue;
+                }
             }
+            return null;
+        } catch (e) {
+            return null;
         }
-        return null;
     };
 
     try {
@@ -1750,10 +2236,32 @@ app.get('/api/files/:name', (req, res) => {
         }
 
         if (foundPath) {
-            const isAudio = fileName.endsWith('.mp3') || fileName.endsWith('.m4b');
-            res.setHeader('Content-Type', isAudio ? 'audio/mpeg' : 'application/epub+zip');
+            const lowerFileName = foundPath.toLowerCase();
+            const isAudio = lowerFileName.endsWith('.mp3') || lowerFileName.endsWith('.m4b') || lowerFileName.endsWith('.aac');
+            const isPdf = lowerFileName.endsWith('.pdf');
+            const isImage = lowerFileName.match(/\.(jpg|jpeg|png|gif|webp)$/);
+            
+            let contentType = 'application/octet-stream';
+            if (isAudio) contentType = 'audio/mpeg';
+            else if (isPdf) contentType = 'application/pdf';
+            else if (isImage) contentType = `image/${lowerFileName.split('.').pop()?.replace('jpg', 'jpeg')}`;
+            else if (lowerFileName.endsWith('.mobi')) contentType = 'application/x-mobipocket-ebook';
+            else contentType = 'application/epub+zip';
+
+            res.setHeader('Content-Type', contentType);
             res.setHeader('Accept-Ranges', 'bytes');
-            res.sendFile(foundPath);
+            res.sendFile(foundPath, (err) => {
+                if (err) {
+                    if (err.message === 'Request aborted' || err.message.includes('EPIPE')) {
+                        console.log(`[FILE-API] File transfer interrupted/aborted: ${foundPath}`);
+                    } else {
+                        console.error(`[FILE-API] Error sending file ${foundPath}:`, err);
+                        if (!res.headersSent) {
+                            res.status(500).send('Error sending file');
+                        }
+                    }
+                }
+            });
         } else {
             res.status(404).send('File not found in local library');
         }
@@ -1769,10 +2277,57 @@ app.post('/api/books/:id/organize', (req, res) => {
     if (!book) return res.status(404).json({ error: 'Book not found' });
     
     if (!book.filePath || !fs.existsSync(book.filePath)) {
-        return res.status(400).json({ error: 'Source file not found on disk' });
+        const safeDecode = (str: string) => {
+            try { return decodeURIComponent(str); } catch { return str; }
+        };
+        
+        // Attempt to find the real file using recursive search if it was nested
+        let actualFile: string | null = null;
+        if (book.fileUrl) {
+            const searchDirs = [
+                STORAGE_DIRS.download,
+                path.join(BOOKARR_DIR, 'audiobooks'), // Legacy fallback
+                path.join(BOOKARR_DIR, 'ebooks')     // Legacy fallback
+            ];
+            const fileName = safeDecode(book.fileUrl.split('/').pop() || '');
+            if (fileName) {
+                const findFileRecursive = (dir: string): string | null => {
+                    try {
+                        if (!fs.existsSync(dir)) return null;
+                        const items = fs.readdirSync(dir);
+                        for (const item of items) {
+                            const fullPath = path.join(dir, item);
+                            try {
+                                if (fs.lstatSync(fullPath).isDirectory()) {
+                                    const found = findFileRecursive(fullPath);
+                                    if (found) return found;
+                                } else if (item === fileName || fullPath.endsWith(fileName) || safeDecode(item) === safeDecode(fileName)) {
+                                    return fullPath;
+                                }
+                            } catch (e) {
+                                continue;
+                            }
+                        }
+                        return null;
+                    } catch (e) {
+                        return null;
+                    }
+                };
+                for (const dir of searchDirs) {
+                    actualFile = findFileRecursive(dir);
+                    if (actualFile) break;
+                }
+            }
+        }
+        
+        if (actualFile) {
+            book.filePath = actualFile;
+        } else {
+            return res.status(400).json({ error: 'Source file not found on disk' });
+        }
     }
 
-    const finalPath = finalizeFileLocation(book.filePath, book.type);
+    const finalPath = finalizeFileLocation(book.filePath, book.type, book.author, book.title);
     if (finalPath !== book.filePath) {
         book.filePath = finalPath;
         book.fileUrl = `/api/files/${path.basename(finalPath)}`;
@@ -1823,7 +2378,7 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
             success: true, 
             filePath: finalPath,
             fileName: path.basename(finalPath),
-            fileUrl: `/api/files/${path.basename(finalPath)}`
+            fileUrl: `/api/files/${encodeURIComponent(path.basename(finalPath))}`
         });
     } catch (err: any) {
         console.error('Upload processing failed:', err);
@@ -1843,6 +2398,7 @@ async function startServer() {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
     app.get('*', (req, res) => {
+      console.log('FALLBACK TO INDEX.HTML FOR:', req.url);
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }

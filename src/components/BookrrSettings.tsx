@@ -4,8 +4,10 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Settings, HardDrive, Terminal, Plus, Layers, CheckCircle2, Trash2, Activity, ShieldCheck, AlertTriangle, RefreshCw, FolderOpen } from 'lucide-react';
+import { Settings, HardDrive, Terminal, Plus, Layers, CheckCircle2, Trash2, Activity, ShieldCheck, AlertTriangle, RefreshCw, FolderOpen, Volume2, Sparkles, Wand2, Zap, X, FileUp } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { BookrrConfig, IndexerSettings, MessageLog, Book } from '../types';
+import { useReadAloud } from '../context/ReadAloudContext';
 import {
   getDirectoryHandle,
   saveDirectoryHandle,
@@ -14,9 +16,10 @@ import {
   getOfflineBooksMap,
   getOfflineFile,
   updateOfflineFilePath,
-  saveOfflineFile
+  saveOfflineFile,
+  saveFileHandle
 } from '../services/LocalFileService';
-import { sanitizePathName, scanWatchFolder, autoMapFiles, organizeSingleFile } from '../services/LocalOrganizerService';
+import { sanitizePathName, scanWatchFolder, autoMapFiles, organizeSingleFile, WatchFolderFile } from '../services/LocalOrganizerService';
 
 interface IndexerSettingsProps {
   books?: Book[];
@@ -28,8 +31,74 @@ interface IndexerSettingsProps {
 }
 
 export default function BookrrSettings({ books = [], config, indexers, logs, onSaveConfig }: IndexerSettingsProps) {
+  const { state: ttsState, setEngine: setTtsEngine, initializeNeuralEngine, cancelNeuralEngine, resetNeuralEngine, setNeuralModel, setNeuralBackend } = useReadAloud();
   // Form configurations
   const [webtorEnabled, setWebtorEnabled] = useState(config.webtorEnabled ?? true);
+  const [notification, setNotification] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(null);
+  
+  const currentSavedModelFull = localStorage.getItem('bookrr_tts_model_id') || 'kokoro/Kokoro-82M-v1.0-ONNX';
+  const modelParts = currentSavedModelFull.split('/');
+  const savedBaseModel = modelParts.slice(0, 2).join('/');
+  const savedSpeakerId = parseInt(modelParts[2]) || 0;
+
+  const [selectedNeuralModel, setSelectedNeuralModel] = useState(savedBaseModel);
+  const [selectedSpeakerId, setSelectedSpeakerId] = useState(savedSpeakerId);
+
+const currentSavedBackend = localStorage.getItem('bookrr_tts_backend') || 'auto';
+  const [selectedBackend, setSelectedBackend] = useState(currentSavedBackend);
+
+  const handleNeuralModelChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const val = e.target.value;
+    setSelectedNeuralModel(val);
+    if (val.includes('libritts_r') || val.includes('vctk')) {
+        setNeuralModel(val + '/' + selectedSpeakerId);
+    } else {
+        setNeuralModel(val);
+    }
+  };
+
+  const handleSpeakerIdChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const val = parseInt(e.target.value) || 0;
+    setSelectedSpeakerId(val);
+    setNeuralModel(selectedNeuralModel + '/' + val);
+  };
+
+  const US_VOICE_PRESETS = [
+    { id: 0, label: "Sarah (Female)" },
+    { id: 1, label: "Emily (Female)" },
+    { id: 2, label: "Robert (Male)" },
+    { id: 3, label: "Michael (Male)" },
+    { id: 4, label: "Jessica (Female)" },
+    { id: 5, label: "Thomas (Male)" },
+    { id: 6, label: "William (Male)" },
+    { id: 7, label: "Henry (Male)" },
+    { id: 8, label: "David (Male)" },
+    { id: 9, label: "Alice (Female)" }
+  ];
+  const UK_VOICE_PRESETS = [
+    { id: 0, label: "Elizabeth (Female)" },
+    { id: 1, label: "Charlotte (Female)" },
+    { id: 2, label: "Victoria (Female)" },
+    { id: 3, label: "Beatrice (Female)" },
+    { id: 4, label: "Alistair (Male)" },
+    { id: 5, label: "George (Male)" },
+    { id: 6, label: "Charles (Male)" },
+    { id: 7, label: "Harry (Male)" },
+    { id: 8, label: "Arthur (Female)" },
+    { id: 9, label: "Florence (Male)" }
+  ];
+
+  const handleBackendChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedBackend(e.target.value);
+    setNeuralBackend(e.target.value);
+  };
+
+  const showNotification = (type: 'success' | 'error' | 'info', message: string) => {
+    setNotification({ type, message });
+    setTimeout(() => {
+      setNotification((current) => current?.message === message ? null : current);
+    }, 6000);
+  };
   const [localDownloadPath, setLocalDownloadPath] = useState(config.localDownloadPath || '');
 
   // Indexers management
@@ -46,14 +115,17 @@ export default function BookrrSettings({ books = [], config, indexers, logs, onS
 
   // Local File System Organizer Directory handles state
   const [watchHandle, setWatchHandle] = useState<FileSystemDirectoryHandle | null>(null);
+  const [watchInternalHandle, setWatchInternalHandle] = useState<FileSystemDirectoryHandle | null>(null);
   const [ebooksHandle, setEbooksHandle] = useState<FileSystemDirectoryHandle | null>(null);
   const [audiobooksHandle, setAudiobooksHandle] = useState<FileSystemDirectoryHandle | null>(null);
 
   const [watchPermission, setWatchPermission] = useState<'pending' | 'granted' | 'denied'>('pending');
+  const [watchInternalPermission, setWatchInternalPermission] = useState<'pending' | 'granted' | 'denied'>('pending');
   const [ebooksPermission, setEbooksPermission] = useState<'pending' | 'granted' | 'denied'>('pending');
   const [audiobooksPermission, setAudiobooksPermission] = useState<'pending' | 'granted' | 'denied'>('pending');
   const [internalStorage, setInternalStorage] = useState<{ baseDir: string, paths: Record<string, string> } | null>(null);
   const [rootHandle, setRootHandle] = useState<FileSystemDirectoryHandle | null>(null);
+  const [rootName, setRootName] = useState<string | null>(null);
 
   // ... rest of state stays same ...
 
@@ -64,24 +136,33 @@ export default function BookrrSettings({ books = [], config, indexers, logs, onS
       setRootHandle(handle);
       
       // Auto-create subfolders if not present
-      const watchHandle = await handle.getDirectoryHandle('download', { create: true });
+      const watchInternal = await handle.getDirectoryHandle('download', { create: true });
       const ebooksHandle = await handle.getDirectoryHandle('ebooks', { create: true });
       const audiobooksHandle = await handle.getDirectoryHandle('audiobooks', { create: true });
 
-      setWatchHandle(watchHandle);
+      setWatchInternalHandle(watchInternal);
       setEbooksHandle(ebooksHandle);
       setAudiobooksHandle(audiobooksHandle);
       
-      setWatchPermission('granted');
+      setWatchInternalPermission('granted');
       setEbooksPermission('granted');
       setAudiobooksPermission('granted');
 
       // Persist handles manually as we're not using a library for this simplicity
       localStorage.setItem('bookarr_root_name', handle.name);
+      setRootName(handle.name);
+
+      // Save handles to IndexedDB for persistence
+      await saveDirectoryHandle('watch_internal', watchInternal);
+      await saveDirectoryHandle('ebooks', ebooksHandle);
+      await saveDirectoryHandle('audiobooks', audiobooksHandle);
       
-      alert(`Bookarr initialized in: ${handle.name}\n- download/\n- ebooks/\n- audiobooks/`);
-    } catch (e) {
+      showNotification('success', `Bookarr fully initialized inside folder: "${handle.name}". Staged downloads, organized Ebooks and Audiobooks folders mapped correctly.`);
+    } catch (e: any) {
       console.error('Failed to pick root folder', e);
+      if (e.name !== 'AbortError') {
+        showNotification('error', `Failed to initialize folder root: ${e.message || String(e)}`);
+      }
     }
   };
 
@@ -95,7 +176,7 @@ export default function BookrrSettings({ books = [], config, indexers, logs, onS
     expectedPath: string;    // relative path like Author/Book/Title - Author.ext
     expectedFilename: string; // Title - Author.ext
     source: 'indexeddb' | 'watch';
-    watchFile?: any; // To store WatchFolderFile if it comes from watch directory
+    watchFile?: WatchFolderFile; // To store WatchFolderFile if it comes from watch directory
   }
   
   const [isScanningLibrary, setIsScanningLibrary] = useState(false);
@@ -109,21 +190,39 @@ export default function BookrrSettings({ books = [], config, indexers, logs, onS
   useEffect(() => {
     const loadHandles = async () => {
       try {
-        // Fetch internal storage paths from server
-        fetch('/api/system/storage')
-          .then(res => res.json())
-          .then(data => {
-            if (data.success) {
-               setInternalStorage({ baseDir: data.baseDir, paths: data.paths });
-            }
-          })
-          .catch(err => console.error('Failed to fetch storage info:', err));
+        const storedRootName = localStorage.getItem('bookarr_root_name');
+        if (storedRootName) {
+          setRootName(storedRootName);
+        }
+
+        // Fetch internal storage paths from server with retries
+        const fetchStorage = (retries = 3) => {
+          fetch('/api/system/storage')
+            .then(res => {
+              if (!res.ok) throw new Error(`HTTP ${res.status}`);
+              return res.json();
+            })
+            .then(data => {
+              if (data.success) {
+                 setInternalStorage({ baseDir: data.baseDir, paths: data.paths });
+              }
+            })
+            .catch(err => {
+              console.error('Failed to fetch storage info:', err);
+              if (retries > 0) {
+                 setTimeout(() => fetchStorage(retries - 1), 2000);
+              }
+            });
+        };
+        fetchStorage();
 
         const watch = await getDirectoryHandle('watch');
+        const watchInternal = await getDirectoryHandle('watch_internal');
         const ebooks = await getDirectoryHandle('ebooks');
         const audiobooks = await getDirectoryHandle('audiobooks');
 
         setWatchHandle(watch);
+        setWatchInternalHandle(watchInternal);
         setEbooksHandle(ebooks);
         setAudiobooksHandle(audiobooks);
 
@@ -131,6 +230,10 @@ export default function BookrrSettings({ books = [], config, indexers, logs, onS
         if (watch) {
           const perm = await (watch as any).queryPermission({ mode: 'readwrite' });
           setWatchPermission(perm === 'granted' ? 'granted' : 'pending');
+        }
+        if (watchInternal) {
+          const perm = await (watchInternal as any).queryPermission({ mode: 'readwrite' });
+          setWatchInternalPermission(perm === 'granted' ? 'granted' : 'pending');
         }
         if (ebooks) {
           const perm = await (ebooks as any).queryPermission({ mode: 'readwrite' });
@@ -176,30 +279,33 @@ export default function BookrrSettings({ books = [], config, indexers, logs, onS
                                (typeof window !== 'undefined' && window.self !== window.top);
 
         if (isIframeMessage) {
-          alert(
-            `Browser Security Limitation:\n\n` +
-            `Standard file pickers are restricted inside of cross-origin preview iframes for your security.\n\n` +
-            `To connect your local directories, please open this app in its own browser tab by clicking the "Open in new tab" icon at the top right of your preview panel, or use the "Open in New Tab" button in settings!`
+          showNotification(
+            'error',
+            'Cross-origin sandbox restriction: Folder pickers cannot open inside frames. Please click "Open in New Tab" to authorize local directories!'
           );
         } else {
-          alert(`Folder selection failed: ${e.message || String(e)}`);
+          showNotification('error', `Folder connection failed: ${e.message || String(e)}`);
         }
       }
     }
   };
 
-  const verifyResetPermission = async (type: 'watch' | 'ebooks' | 'audiobooks', handle: FileSystemDirectoryHandle) => {
+  const verifyResetPermission = async (type: 'watch' | 'watch_internal' | 'ebooks' | 'audiobooks', handle: FileSystemDirectoryHandle) => {
     const perm = await verifyDirectoryPermission(handle, true, true);
     if (type === 'watch') setWatchPermission(perm ? 'granted' : 'denied');
+    else if (type === 'watch_internal') setWatchInternalPermission(perm ? 'granted' : 'denied');
     else if (type === 'ebooks') setEbooksPermission(perm ? 'granted' : 'denied');
     else if (type === 'audiobooks') setAudiobooksPermission(perm ? 'granted' : 'denied');
   };
 
-  const removeFolder = async (type: 'watch' | 'ebooks' | 'audiobooks') => {
+  const removeFolder = async (type: 'watch' | 'watch_internal' | 'ebooks' | 'audiobooks') => {
     await deleteDirectoryHandle(type);
     if (type === 'watch') {
       setWatchHandle(null);
       setWatchPermission('pending');
+    } else if (type === 'watch_internal') {
+      setWatchInternalHandle(null);
+      setWatchInternalPermission('pending');
     } else if (type === 'ebooks') {
       setEbooksHandle(null);
       setEbooksPermission('pending');
@@ -228,7 +334,8 @@ export default function BookrrSettings({ books = [], config, indexers, logs, onS
         // Expected structure
         const authorFolder = sanitizePathName(book.author);
         const titleFolder = sanitizePathName(book.title);
-        const ext = offlineInfo.name.split('.').pop() || (book.type === 'audiobook' ? 'mp3' : 'epub');
+        const parts = offlineInfo.name.split('.');
+        const ext = parts.length > 1 ? parts.pop() : (offlineInfo.filePath?.split('.').pop() || (book.type === 'audiobook' ? 'mp3' : 'epub'));
         const expectedFilename = `${titleFolder} - ${authorFolder}.${ext}`;
         const relativeExpectedPath = `${authorFolder}/${titleFolder}/${expectedFilename}`;
         const fullExpectedPath = `${book.type === 'audiobook' ? 'Audiobooks' : 'Ebooks'}/${relativeExpectedPath}`;
@@ -250,27 +357,49 @@ export default function BookrrSettings({ books = [], config, indexers, logs, onS
       }
 
       // 2. Scan Watch (Downloads) Directory for unassigned auto-matching files
-      if (watchHandle) {
+      if (watchHandle || watchInternalHandle || ebooksHandle || audiobooksHandle) {
         try {
-           const fileList = await scanWatchFolder(watchHandle);
-           const mappedFiles = autoMapFiles(fileList, books);
+           let combinedFiles: WatchFolderFile[] = [];
+           if (watchHandle) {
+             const fileList = await scanWatchFolder(watchHandle);
+             combinedFiles = [...combinedFiles, ...fileList];
+           }
+           if (watchInternalHandle) {
+             const internalFileList = await scanWatchFolder(watchInternalHandle);
+             combinedFiles = [...combinedFiles, ...internalFileList];
+           }
+           if (ebooksHandle) {
+             const ebooksFileList = await scanWatchFolder(ebooksHandle);
+             combinedFiles = [...combinedFiles, ...ebooksFileList];
+           }
+           if (audiobooksHandle) {
+             const audiobooksFileList = await scanWatchFolder(audiobooksHandle);
+             combinedFiles = [...combinedFiles, ...audiobooksFileList];
+           }
+           
+           const mappedFiles = autoMapFiles(combinedFiles, books);
            for (const file of mappedFiles) {
               if (file.autoMappedBook) {
                  const book = file.autoMappedBook;
-                 // If the book does NOT have an offline map entry correctly set up yet
-                 if (!offlineMap[book.id]) {
+                 // If the book does NOT have an offline map entry correctly set up yet, OR it's a cover
+                 if (!offlineMap[book.id] || file.type === 'cover') {
                     const authorFolder = sanitizePathName(book.author);
                     const titleFolder = sanitizePathName(book.title);
                     const ext = file.extension;
-                    const expectedFilename = `${titleFolder} - ${authorFolder}.${ext}`;
+                    const expectedFilename = file.type === 'cover' ? `cover.${ext}` : `${titleFolder} - ${authorFolder}.${ext}`;
                     const relativeExpectedPath = `${authorFolder}/${titleFolder}/${expectedFilename}`;
+
+                    // Path indicator
+                    let currentPathText = `/Downloads/${file.path}`;
+                    if (file.originDirHandle === ebooksHandle) currentPathText = `/Ebooks/${file.path}`;
+                    if (file.originDirHandle === audiobooksHandle) currentPathText = `/Audiobooks/${file.path}`;
 
                     discrepancies.push({
                       bookId: book.id,
                       title: book.title,
                       author: book.author,
                       type: book.type,
-                      currentPath: `/Downloads/${file.path}`, // Virtual representation showing watch folder location
+                      currentPath: currentPathText, // Virtual representation showing location
                       expectedPath: relativeExpectedPath,
                       expectedFilename,
                       source: 'watch',
@@ -280,14 +409,14 @@ export default function BookrrSettings({ books = [], config, indexers, logs, onS
               }
            }
         } catch (e) {
-           console.warn("Failed to scan watch folder during library structure check:", e);
+           console.warn("Failed to scan folders during library structure check:", e);
         }
       }
 
       setLibraryDiscrepancies(discrepancies);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to analyze library structure:', err);
-      alert('Error analyzing library structure. Check logs.');
+      showNotification('error', `Analyzing library structure failed: ${err.message || String(err)}`);
     } finally {
       setHasScannedLibrary(true);
       setIsScanningLibrary(false);
@@ -296,7 +425,7 @@ export default function BookrrSettings({ books = [], config, indexers, logs, onS
 
   const handleOrganizeDiscrepancies = async () => {
     if (!ebooksHandle || !audiobooksHandle) {
-      alert("Please connect both Organized Ebooks and Audiobooks destinations above to organize files.");
+      showNotification('info', "Please connect both Organized Ebooks and Audiobooks destination folders to organize files.");
       return;
     }
 
@@ -318,6 +447,13 @@ export default function BookrrSettings({ books = [], config, indexers, logs, onS
                 const record = await getOfflineFile(disc.bookId);
                 if (!record) continue; // couldn't read local indexblob
 
+                // Reorganize using new service method
+                const baseHandle = disc.type === 'audiobook' ? audiobooksHandle : ebooksHandle;
+                
+                // For indexedDB, we don't have a direct filehandle here, so we continue using existing logic 
+                // but can refactor this to use reorganizeFile if we could get a handle. 
+                // Given the constraint, I will keep current indexedDB logic but improve the path handling.
+                
                 // 1. Create Author / Book Directory
                 const authorFolder = sanitizePathName(disc.author);
                 const bookFolder = sanitizePathName(disc.title);
@@ -328,23 +464,49 @@ export default function BookrrSettings({ books = [], config, indexers, logs, onS
                 // 2. Write file
                 const fileHandle = await bookDirHandle.getFileHandle(disc.expectedFilename, { create: true });
                 const writable = await fileHandle.createWritable();
-                await writable.write(record.blob);
+                const arrayBuffer = await record.blob.arrayBuffer();
+                await writable.write(arrayBuffer);
                 await writable.close();
 
                 // 3. Update DB
                 const finalDestPath = `${disc.type === 'audiobook' ? 'Audiobooks' : 'Ebooks'}/${disc.expectedPath}`;
                 await updateOfflineFilePath(disc.bookId, finalDestPath);
+                await saveFileHandle(disc.bookId, fileHandle);
+                
+                // Optional: remove old file if currentPath != finalDestPath
+                // ... (would require parent handle, skipping for now as per constraints)
+
                 fixedCount++;
-            } else if (disc.source === 'watch' && disc.watchFile && watchHandle) {
+            } else if (disc.source === 'watch' && disc.watchFile && (watchHandle || watchInternalHandle)) {
                 const bookRef = books.find(b => b.id === disc.bookId);
                 if (!bookRef) continue;
                 
-                const result = await organizeSingleFile(disc.watchFile, watchHandle, baseHandle, bookRef);
+                const fallbackWatchDir = watchHandle || watchInternalHandle;
+                const result = await organizeSingleFile(disc.watchFile, fallbackWatchDir!, baseHandle, bookRef);
                 if (result.success && result.fileObj) {
                     try {
-                        // Save the file contents persistently into IndexedDB mapped to this book ID
-                        await saveOfflineFile(disc.bookId, disc.watchFile.name, result.fileObj, result.destinationPath);
-                        fixedCount++;
+                        if (disc.watchFile.type === 'cover') {
+                            const reader = new FileReader();
+                            reader.readAsDataURL(result.fileObj);
+                            reader.onload = async () => {
+                                const coverUrl = reader.result as string;
+                                try {
+                                    await fetch(`/api/books/${disc.bookId}`, {
+                                        method: 'PUT',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ coverUrl })
+                                    });
+                                } catch (e) {}
+                            };
+                            fixedCount++;
+                        } else {
+                            // Save the file contents persistently into IndexedDB mapped to this book ID
+                            await saveOfflineFile(disc.bookId, disc.watchFile.name, result.fileObj, result.destinationPath);
+                            if (result.destFileHandle) {
+                                await saveFileHandle(disc.bookId, result.destFileHandle);
+                            }
+                            fixedCount++;
+                        }
                     } catch (dbErr) {
                         console.error('Failed to register organized physical file inside IndexedDB:', dbErr);
                     }
@@ -359,7 +521,7 @@ export default function BookrrSettings({ books = [], config, indexers, logs, onS
     }
 
     setIsFixingLibrary(false);
-    alert(`Successfully organized ${fixedCount} out of ${libraryDiscrepancies.length} files.`);
+    showNotification('success', `Library sorted and restructured! Synchronized ${fixedCount} of ${libraryDiscrepancies.length} filesystem items successfully.`);
     
     // Refresh the list
     handleAnalyzeLibraryStructure();
@@ -507,6 +669,38 @@ export default function BookrrSettings({ books = [], config, indexers, logs, onS
   return (
     <div className="space-y-6">
       
+      <AnimatePresence>
+        {notification && (
+          <motion.div
+            initial={{ opacity: 0, y: -20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.95 }}
+            transition={{ duration: 0.2 }}
+            className={`fixed top-6 right-6 z-[99] max-w-sm p-4 rounded-xl border shadow-xl flex items-start gap-3 backdrop-blur-md ${
+              notification.type === 'success' 
+                ? 'bg-neutral-900/95 border-emerald-500/30 text-emerald-250' 
+                : notification.type === 'error'
+                ? 'bg-neutral-900/95 border-rose-500/30 text-rose-250'
+                : 'bg-neutral-900/95 border-neutral-800 text-neutral-255'
+            }`}
+          >
+            {notification.type === 'success' && <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />}
+            {notification.type === 'error' && <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />}
+            {notification.type === 'info' && <HardDrive className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />}
+            <div className="flex-1 text-xs leading-relaxed text-left text-neutral-200">
+              <h5 className="font-bold mb-0.5 capitalize text-neutral-100">{notification.type}</h5>
+              <p className="text-neutral-450 font-sans leading-snug">{notification.message}</p>
+            </div>
+            <button 
+              onClick={() => setNotification(null)}
+              className="text-neutral-500 hover:text-neutral-300 transition shrink-0 cursor-pointer"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
         
         <div className="space-y-6">
@@ -521,55 +715,92 @@ export default function BookrrSettings({ books = [], config, indexers, logs, onS
             </div>
 
             <div className="space-y-4">
-              <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-4 space-y-3">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-amber-500 rounded-lg text-black">
-                    <FolderOpen size={18} />
+              <div className={rootName ? "bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-4 space-y-3" : "bg-amber-500/5 border border-amber-500/20 rounded-xl p-4 space-y-3"}>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className={rootName ? "p-2 bg-emerald-500 rounded-lg text-black" : "p-2 bg-amber-500 rounded-lg text-black"}>
+                      <FolderOpen size={18} />
+                    </div>
+                    <div className="text-left">
+                      <h4 className="text-[11px] font-bold text-neutral-200">Device Internal Storage</h4>
+                      <p className="text-[10px] text-neutral-500 leading-tight">
+                        {rootName ? `Mapped root: "${rootName}"` : 'Pick your "Bookarr" root folder to keep all files self-contained.'}
+                      </p>
+                    </div>
                   </div>
-                  <div className="text-left">
-                    <h4 className="text-[11px] font-bold text-neutral-200">Device Internal Storage</h4>
-                    <p className="text-[10px] text-neutral-500 leading-tight">Pick your "Bookarr" root folder to keep all files self-contained.</p>
-                  </div>
+                  {rootName && (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        localStorage.removeItem('bookarr_root_name');
+                        setRootName(null);
+                        setRootHandle(null);
+                        setWatchInternalHandle(null);
+                        setEbooksHandle(null);
+                        setAudiobooksHandle(null);
+                        await deleteDirectoryHandle('watch_internal');
+                        await deleteDirectoryHandle('ebooks');
+                        await deleteDirectoryHandle('audiobooks');
+                        showNotification('info', 'Disconnected browser storage root folder. Individual folders can now be selected manually if needed.');
+                      }}
+                      className="bg-[#1a1a1a] border border-neutral-800 hover:border-red-500/30 text-rose-400 text-[10px] uppercase font-bold py-1 px-2.5 rounded transition cursor-pointer"
+                    >
+                      Disconnect
+                    </button>
+                  )}
                 </div>
-                <button 
-                  type="button"
-                  onClick={pickRootFolder}
-                  className="w-full py-2 bg-amber-500 hover:bg-amber-400 text-black text-[11px] font-bold rounded-lg transition"
-                >
-                  {rootHandle ? `Linked: /${rootHandle.name}` : 'Initialize Bookarr Root'}
-                </button>
+                {!rootName && (
+                  <button 
+                    type="button"
+                    onClick={pickRootFolder}
+                    className="w-full py-2 bg-amber-500 hover:bg-amber-400 text-black text-[11px] font-bold rounded-lg transition"
+                  >
+                    Initialize Bookarr Root
+                  </button>
+                )}
               </div>
 
-              <div className="space-y-1 font-mono text-[11px]">
-                <label className="text-neutral-400 block font-semibold">Watch / Download Path (Staging)</label>
-                <input
-                  type="text"
-                  value={localDownloadPath}
-                  onChange={(e) => setLocalDownloadPath(e.target.value)}
-                  placeholder={internalStorage?.paths?.download || "/data/bookarr/download"}
-                  className="w-full bg-[#1e1e1e] border border-[#2d2d2d] rounded-lg p-2.5 focus:outline-none focus:border-amber-500 text-neutral-100 text-xs"
-                />
-                <p className="text-[10px] text-neutral-500 font-sans leading-snug mt-1">
-                  Files placed in your device "download" folder will be staged here before organization.
+              <div className="space-y-1 text-xs">
+                <label className="text-neutral-400 block font-semibold font-sans">Server Library Scan Folder (Optional)</label>
+                {rootName ? (
+                  <div className="w-full bg-[#141414] border border-emerald-500/20 rounded-lg p-2.5 text-xs text-neutral-400 flex items-center justify-between font-sans">
+                    <span className="flex items-center gap-1.5 truncate">
+                      <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
+                      Client-Side Active: {rootName}/download
+                    </span>
+                    <span className="text-[9px] uppercase font-bold text-emerald-500 bg-emerald-500/10 px-1.5 py-0.5 rounded leading-none shrink-0 font-mono">
+                      Browser Storage
+                    </span>
+                  </div>
+                ) : (
+                  <input
+                    type="text"
+                    value={localDownloadPath}
+                    onChange={(e) => setLocalDownloadPath(e.target.value)}
+                    placeholder={internalStorage?.paths?.download || "/data/bookarr/download"}
+                    className="w-full bg-[#1e1e1e] border border-[#2d2d2d] rounded-lg p-2.5 focus:outline-none focus:border-amber-500 text-neutral-100 text-xs font-mono"
+                  />
+                )}
+                <p className="text-[10px] text-neutral-550 leading-snug font-sans mt-1">
+                  {rootName 
+                    ? "With Active Device storage, the scanning & organizing of downloads is done locally from your device's Bookrr > download folder."
+                    : "An absolute folder path on your hosting server where completed server-side torrents or files are initially stored before you organize them."}
                 </p>
               </div>
 
               {internalStorage && (
                 <div className="space-y-2 pt-2 border-t border-[#222]/50">
-                   <h4 className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest pl-1">Server Managed Repositories</h4>
-                   <div className="bg-[#161616] p-3 rounded-xl border border-neutral-900 space-y-2">
+                   <h4 className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest pl-1">Server Storage & Download Space</h4>
+                   <div className="bg-[#161616] p-3 rounded-xl border border-neutral-900 space-y-2.5">
                        <div className="flex items-center justify-between text-[10px] font-mono">
-                          <span className="text-neutral-500">Staging:</span>
-                          <span className="text-amber-500/80 truncate ml-2" title={internalStorage.paths.download}>{internalStorage.paths.download.split('/').slice(-3).join('/')}</span>
+                          <span className="text-neutral-500 font-sans">Server Staging Folder:</span>
+                          <span className="text-amber-500/80 truncate ml-2" title={internalStorage?.paths?.download}>
+                            {internalStorage?.paths?.download || 'data/bookarr/download'}
+                          </span>
                        </div>
-                       <div className="flex items-center justify-between text-[10px] font-mono">
-                          <span className="text-neutral-500">Audiobooks:</span>
-                          <span className="text-neutral-300 truncate ml-2" title={internalStorage.paths.audiobooks}>{internalStorage.paths.audiobooks.split('/').slice(-3).join('/')}</span>
-                       </div>
-                       <div className="flex items-center justify-between text-[10px] font-mono">
-                          <span className="text-neutral-500">Ebooks:</span>
-                          <span className="text-neutral-300 truncate ml-2" title={internalStorage.paths.ebooks}>{internalStorage.paths.ebooks.split('/').slice(-3).join('/')}</span>
-                       </div>
+                       <p className="text-[10px] text-neutral-500 font-sans leading-relaxed pt-1.5 border-t border-neutral-900/40">
+                         <strong>Note:</strong> Your organized Audiobooks and Ebooks are stored entirely client-side inside your <strong>Device Internal Storage</strong> selected above. The server only uses this temporary folder to host downloads until they are organized.
+                       </p>
                    </div>
                 </div>
               )}
@@ -591,6 +822,276 @@ export default function BookrrSettings({ books = [], config, indexers, logs, onS
               </button>
             </div>
           </form>
+
+
+          {/* Neural AI Settings */}
+          <div className="bg-[#111] border border-[#222] rounded-2xl p-6 space-y-6">
+            <div className="flex items-center gap-3 pb-4 border-b border-[#222]">
+              <Sparkles className="w-5 h-5 text-indigo-400" />
+              <div>
+                <h3 className="font-sans font-bold text-sm text-neutral-100">Speech & AI Experience</h3>
+                <p className="text-[11px] text-neutral-400">Manage high-fidelity on-device Neural TTS engines</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-neutral-900 border border-white/5">
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-lg ${ttsState.engine === 'neural' ? 'bg-indigo-500/20 text-indigo-400' : 'bg-amber-500/20 text-amber-500'}`}>
+                    {ttsState.engine === 'neural' ? <Zap size={18} /> : <Volume2 size={18} />}
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-neutral-200">Active Voice Engine</h4>
+                    <p className="text-[10px] text-neutral-500">
+                      {ttsState.engine === 'neural' ? 'High-fidelity AI Synthesis' : 'Standard Web Speech API'}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 p-1 bg-neutral-950 rounded-xl border border-white/5 self-end sm:self-auto">
+                    <button 
+                      onClick={() => setTtsEngine('native')}
+                      className={`px-3 py-1.5 text-[10px] font-bold rounded-lg transition-all ${
+                        ttsState.engine === 'native' ? 'bg-amber-500 text-black shadow-lg shadow-amber-500/10' : 'text-neutral-500 hover:text-neutral-300'
+                      }`}
+                    >
+                      Native
+                    </button>
+                    <button 
+                      onClick={() => setTtsEngine('neural')}
+                      className={`px-3 py-1.5 text-[10px] font-bold rounded-lg transition-all flex items-center gap-1.5 ${
+                        ttsState.engine === 'neural' ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/10' : 'text-neutral-500 hover:text-neutral-300'
+                      }`}
+                    >
+                      <Wand2 size={10} />
+                      Neural AI
+                    </button>
+                </div>
+              </div>
+
+              {ttsState.engine === 'neural' && (
+                <motion.div 
+                  initial={{ opacity: 0, y: 5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="p-5 rounded-2xl bg-indigo-500/5 border border-indigo-500/20 space-y-4"
+                >
+                   <div className="flex items-center justify-between gap-4">
+                      <div className="flex flex-col w-full">
+                         <span className="text-[11px] font-bold text-neutral-300 uppercase tracking-wider">Neural Model</span>
+                         
+                      
+                         <select 
+                            value={selectedNeuralModel}
+                            onChange={handleNeuralModelChange}
+                            disabled={ttsState.neuralStatus === 'loading'}
+                            className="w-full bg-black/40 border border-white/10 rounded-lg p-2 text-white text-[11px] font-medium appearance-none focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 mt-2"
+                         >
+                            <option value="piper/en_US-libritts_r-medium">US Voices (LibriTTS R)</option>
+                            <option value="piper/en_GB-vctk-medium">UK Voices (VCTK)</option>
+                            <option value="kokoro/Kokoro-82M-v1.0-ONNX">Premium Voices (Kokoro - high-end devices)</option>
+                         </select>
+                      </div>
+
+                      { (selectedNeuralModel.includes('libritts_r') || selectedNeuralModel.includes('vctk')) && (
+                        <div className="flex flex-col w-full mt-4">
+                           <span className="text-[11px] font-bold text-neutral-300 uppercase tracking-wider mb-2">Voice Preset</span>
+                           <select 
+                               value={selectedSpeakerId} 
+                               onChange={handleSpeakerIdChange} 
+                               disabled={ttsState.neuralStatus === 'loading'}
+                               className="w-full bg-black/40 border border-white/10 rounded-lg p-2 text-white text-[11px] font-medium appearance-none focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50"
+                           >
+                             {selectedNeuralModel.includes('libritts_r') ? 
+                                US_VOICE_PRESETS.map(preset => (
+                                  <option key={preset.id} value={preset.id}>{preset.label}</option>
+                                )) :
+                                UK_VOICE_PRESETS.map(preset => (
+                                  <option key={preset.id} value={preset.id}>{preset.label}</option>
+                                ))
+                             }
+                           </select>
+                        </div>
+                      )}
+
+                      
+
+                      <div className="flex flex-col w-full">
+                         <span className="text-[11px] font-bold text-neutral-300 uppercase tracking-wider">Hardware Backend</span>
+                         <select 
+                            value={selectedBackend}
+                            onChange={handleBackendChange}
+                            disabled={ttsState.neuralStatus === 'loading'}
+                            className="w-full bg-black/40 border border-white/10 rounded-lg p-2 text-white text-[11px] font-medium appearance-none focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 mt-2"
+                         >
+                            <option value="auto">Auto (Best Available)</option>
+                            <option value="webgpu">WebGPU (GPU)</option>
+                            <option value="webgl">WebGL (Legacy GPU, High Compatibility)</option>
+                            <option value="webnn">WebNN (NPU/GPU)</option>
+                            <option value="wasm">Wasm (CPU only)</option>
+                         </select>
+                      </div>
+                   </div>
+
+                   <div className="flex items-center justify-between border-t border-white/5 pt-4">
+                     <div className="flex items-center gap-2">
+                        <Activity size={14} className="text-indigo-400" />
+                        <span className="text-[11px] font-bold text-neutral-300 uppercase tracking-wider">Model Status</span>
+                     </div>
+                     <span className={`text-[10px] font-bold px-2 py-1 rounded-lg border ${
+                        ttsState.neuralStatus === 'ready' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                        ttsState.neuralStatus === 'loading' ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' :
+                        ttsState.neuralStatus === 'error' ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' :
+                        'bg-neutral-800 text-neutral-500 border-neutral-700'
+                     }`}>
+                        {ttsState.neuralStatus === 'ready' ? 'READY' : 
+                         ttsState.neuralStatus === 'loading' ? 'INITIALIZING...' :
+                         ttsState.neuralStatus === 'error' ? 'FAILED' : 'NOT INITIALIZED'}
+                     </span>
+                   </div>
+
+                   {ttsState.neuralStatus === 'idle' && (
+                     <div className="space-y-4">
+                        <p className="text-[10px] text-indigo-300/70 font-medium leading-tight">
+                            Using high-fidelity VITS on-device neural model. Initial set up requires ~80-160MB download.
+                        </p>
+                        <button
+                          onClick={() => {
+                            console.log("[Settings] Initializing Neural Engine via button click");
+                            initializeNeuralEngine();
+                          }}
+                          disabled={ttsState.neuralStatus === 'loading'}
+                          className={`w-full py-2.5 rounded-xl text-white text-[11px] font-bold shadow-lg transition-all flex items-center justify-center gap-2 ${
+                            ttsState.neuralStatus === 'error' 
+                              ? 'bg-red-500 shadow-red-500/20 hover:bg-red-600' 
+                              : ttsState.neuralStatus === 'loading'
+                                ? 'bg-neutral-800 cursor-not-allowed opacity-50'
+                                : 'bg-indigo-500 shadow-indigo-500/20 hover:bg-indigo-400'
+                          }`}
+                        >
+                          {ttsState.neuralStatus === 'error' ? (
+                            <>
+                              <RefreshCw size={14} className="animate-spin-slow" />
+                              Retry Engine Setup
+                            </>
+                          ) : ttsState.neuralStatus === 'loading' ? (
+                            <>
+                              <Activity size={14} className="animate-pulse" />
+                              Setting up Engine...
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles size={14} />
+                              Download & Initialize Neural Engine
+                            </>
+                          )}
+                        </button>
+                     </div>
+                   )}
+
+                   {ttsState.neuralStatus === 'loading' && (
+                     <div className="space-y-2">
+                        <div className="flex items-center justify-between text-[10px]">
+                          <span className="text-neutral-500 font-medium truncate max-w-[160px] flex items-center gap-1.5">
+                            <span className="relative flex h-2 w-2">
+                               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                               <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
+                            </span>
+                            {ttsState.neuralStatusMessage || 'Initializing...'}
+                          </span>
+                          <div className="flex items-center gap-2">
+                             {ttsState.neuralDownloadSpeed && (
+                                <span className="text-neutral-600 font-mono text-[9px] bg-neutral-900 px-1.5 py-0.5 rounded border border-white/5">
+                                    {ttsState.neuralDownloadSpeed}
+                                </span>
+                             )}
+                             <span className="text-indigo-400 font-bold whitespace-nowrap min-w-[30px] text-right drop-shadow-[0_0_8px_rgba(99,102,241,0.4)]">
+                                {ttsState.neuralDownloadIsIndeterminate ? '' : `${Math.round(ttsState.neuralDownloadProgress)}%`}
+                             </span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                             <div className="flex-1 h-2 bg-neutral-950 rounded-full overflow-hidden border border-white/5 relative shadow-inner">
+                                 <motion.div 
+                                     className="h-full bg-gradient-to-r from-indigo-600 to-indigo-400 shadow-[0_0_12px_rgba(99,102,241,0.6)]"
+                                     initial={{ width: 0 }}
+                                     animate={ttsState.neuralDownloadIsIndeterminate ? {
+                                       left: ["-30%", "100%"],
+                                       width: "30%"
+                                     } : { 
+                                       width: `${Math.max(2, ttsState.neuralDownloadProgress)}%`,
+                                       left: "0%"
+                                     }}
+                                     transition={ttsState.neuralDownloadIsIndeterminate ? {
+                                       duration: 1.5,
+                                       repeat: Infinity,
+                                       ease: "linear"
+                                     } : {
+                                       duration: 0.3
+                                     }}
+                                     style={{ position: 'absolute' }}
+                                 />
+                             </div>
+                             <div className="flex gap-1">
+                               <button
+                                   onClick={() => cancelNeuralEngine()}
+                                   className="p-1 rounded-md bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-colors"
+                                   title="Cancel Download"
+                               >
+                                   <X size={12} />
+                               </button>
+                               <button
+                                   onClick={() => resetNeuralEngine()}
+                                   className="p-1 rounded-md bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 transition-colors"
+                                   title="Force Reset Worker"
+                               >
+                                   <RefreshCw size={12} />
+                               </button>
+                             </div>
+                        </div>
+                        <p className="text-[9px] text-neutral-600 italic">
+                          Setup requires ~80-160MB. Do not close the app or navigate away.
+                        </p>
+                     </div>
+                   )}
+
+                   {ttsState.neuralStatus === 'ready' && (
+                     <div className="flex items-start gap-3 p-3 bg-emerald-500/5 rounded-xl border border-emerald-500/10">
+                        <div className="p-1.5 bg-emerald-500/20 rounded-lg text-emerald-400">
+                          <CheckCircle2 size={14} />
+                        </div>
+                        <div className="text-left w-full">
+                          <p className="text-[11px] font-bold text-emerald-400">Model verified locally</p>
+                          <p className="text-[10px] text-neutral-500 leading-tight mt-0.5">
+                            High-fidelity reading is active. Audio is generated on your device for maximum privacy.
+                          </p>
+                          <div className="mt-2 py-1 px-2 border border-emerald-500/20 bg-emerald-500/10 rounded-lg text-[9px] font-mono text-emerald-300 w-full overflow-hidden text-ellipsis">
+                            {ttsState.neuralHardware || 'Neural Engine Ready'}
+                          </div>
+                        </div>
+                     </div>
+                   )}
+                   
+                   {ttsState.neuralStatus === 'error' && (
+                     <div className="space-y-4">
+                       <div className="flex items-start gap-3 p-3 bg-rose-500/5 rounded-xl border border-rose-500/10">
+                        <div className="p-1.5 bg-rose-500/20 rounded-lg text-rose-400">
+                          <AlertTriangle size={14} />
+                        </div>
+                        <div className="text-left w-full overflow-hidden">
+                          <p className="text-[11px] font-bold text-rose-400 mb-1">Neural Engine Initialization Failed</p>
+                          <div className="text-[9px] font-mono text-rose-300/80 bg-black/20 p-2 rounded border border-rose-500/10 break-words whitespace-pre-wrap w-full max-h-[150px] overflow-y-auto">
+                            {ttsState.neuralStatusMessage || 'Initialization failed'}
+                          </div>
+                          <p className="text-[10px] text-neutral-400 leading-tight mt-2">
+                            Try clicking "Download & Initialize" again to retry.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                   )}
+                </motion.div>
+              )}
+            </div>
+          </div>
 
           {/* Client-Side Directory Watch & Organizer Settings */}
           <div className="bg-[#111] border border-[#222] rounded-2xl p-6 space-y-6">
@@ -628,11 +1129,45 @@ export default function BookrrSettings({ books = [], config, indexers, logs, onS
                 )}
                 
                 {/* Watch Folder */}
-                <div className="space-y-2 bg-[#161616] border border-neutral-900 rounded-xl p-4">
+                <div className="space-y-4 bg-[#161616] border border-neutral-900 rounded-xl p-4">
+                  {/* Browser Storage Watch Folder, if enabled */}
+                  {rootName && (
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-left pb-3 border-b border-neutral-900/60">
+                      <div>
+                        <span className="text-xs font-bold text-neutral-300 block flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                          Root Storage Staging Folder
+                        </span>
+                        <p className="text-[10px] text-neutral-500 leading-snug mt-1">Scanning browser storage at <code>{rootName}/download</code> for automatic sorting.</p>
+                      </div>
+                      <div>
+                        {watchInternalPermission === 'granted' ? (
+                          <span className="bg-emerald-500/10 text-emerald-400 px-2.5 py-1 text-[10px] uppercase font-bold border border-emerald-500/20 rounded flex items-center gap-1.5 leading-none shrink-0 font-sans">
+                            <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" /> Auto-Mapped
+                          </span>
+                        ) : watchInternalHandle ? (
+                          <button
+                            type="button"
+                            onClick={() => verifyResetPermission('watch_internal', watchInternalHandle)}
+                            className="bg-amber-500/15 hover:bg-amber-500/25 text-amber-500 px-2.5 py-1 rounded text-[10px] font-bold uppercase border border-amber-500/30 transition flex items-center gap-1 cursor-pointer animate-pulse"
+                          >
+                            Verify & Unlock
+                          </button>
+                        ) : (
+                          <span className="bg-neutral-800 text-neutral-400 px-2.5 py-1 text-[10px] uppercase font-bold rounded flex items-center gap-1.5 leading-none shrink-0 font-sans">
+                            Connecting...
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-left">
                     <div>
-                      <span className="text-xs font-bold text-neutral-300 block">1. Target Watch Folder</span>
-                      <p className="text-[10px] text-neutral-500 leading-snug mt-1">Select the browser's download folder or where torrent downloads land.</p>
+                      <span className="text-xs font-bold text-neutral-300 block">
+                        Custom Watch Directory {rootName && '(Optional)'}
+                      </span>
+                      <p className="text-[10px] text-neutral-500 leading-snug mt-1">Select a custom system folder (e.g. your device Downloads folder) to organize files you manually put there.</p>
                     </div>
                     <div>
                       {watchHandle ? (
@@ -669,7 +1204,7 @@ export default function BookrrSettings({ books = [], config, indexers, logs, onS
                   </div>
                   {watchHandle && (
                     <div className="text-[9px] font-mono text-neutral-400 border-t border-neutral-800/60 pt-2">
-                      <span className="truncate block">📂 Watch Folder: {watchHandle.name}</span>
+                      <span className="truncate block">📂 Custom Watch Directory: {watchHandle.name}</span>
                     </div>
                   )}
                 </div>
@@ -682,7 +1217,25 @@ export default function BookrrSettings({ books = [], config, indexers, logs, onS
                       <p className="text-[10px] text-neutral-500 leading-snug mt-1">Ebooks will be moved and renamed into: <code>Ebooks/Author/Book/File</code></p>
                     </div>
                     <div>
-                      {ebooksHandle ? (
+                      {rootName ? (
+                        ebooksPermission === 'granted' ? (
+                          <span className="bg-emerald-500/10 text-emerald-400 px-2.5 py-1 text-[10px] uppercase font-bold border border-emerald-500/20 rounded flex items-center gap-1.5 leading-none shrink-0 font-sans">
+                            <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" /> Auto-Mapped
+                          </span>
+                        ) : ebooksHandle ? (
+                          <button
+                            type="button"
+                            onClick={() => verifyResetPermission('ebooks', ebooksHandle)}
+                            className="bg-amber-500/15 hover:bg-amber-500/25 text-amber-500 px-2.5 py-1 rounded text-[10px] font-bold uppercase border border-amber-500/30 transition flex items-center gap-1 cursor-pointer animate-pulse"
+                          >
+                            Verify & Unlock
+                          </button>
+                        ) : (
+                          <span className="bg-neutral-800 text-neutral-400 px-2.5 py-1 text-[10px] uppercase font-bold rounded flex items-center gap-1.5 leading-none shrink-0 font-sans">
+                            Connecting...
+                          </span>
+                        )
+                      ) : ebooksHandle ? (
                         <div className="flex items-center gap-2">
                           <button
                             type="button"
@@ -714,9 +1267,9 @@ export default function BookrrSettings({ books = [], config, indexers, logs, onS
                       )}
                     </div>
                   </div>
-                  {ebooksHandle && (
+                  {(ebooksHandle || rootName) && (
                     <div className="text-[9px] font-mono text-neutral-400 border-t border-neutral-800/60 pt-2">
-                      <span className="truncate block">📂 Ebooks Destination: {ebooksHandle.name}</span>
+                      <span className="truncate block">📂 Ebooks Destination: {ebooksHandle ? ebooksHandle.name : `${rootName}/ebooks`}</span>
                     </div>
                   )}
                 </div>
@@ -729,7 +1282,25 @@ export default function BookrrSettings({ books = [], config, indexers, logs, onS
                       <p className="text-[10px] text-neutral-500 leading-snug mt-1">Audiobooks will be moved and renamed into: <code>Audiobooks/Author/Book/File</code></p>
                     </div>
                     <div>
-                      {audiobooksHandle ? (
+                      {rootName ? (
+                        audiobooksPermission === 'granted' ? (
+                          <span className="bg-emerald-500/10 text-emerald-400 px-2.5 py-1 text-[10px] uppercase font-bold border border-emerald-500/20 rounded flex items-center gap-1.5 leading-none shrink-0 font-sans">
+                            <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" /> Auto-Mapped
+                          </span>
+                        ) : audiobooksHandle ? (
+                          <button
+                            type="button"
+                            onClick={() => verifyResetPermission('audiobooks', audiobooksHandle)}
+                            className="bg-amber-500/15 hover:bg-amber-500/25 text-amber-500 px-2.5 py-1 rounded text-[10px] font-bold uppercase border border-amber-500/30 transition flex items-center gap-1 cursor-pointer animate-pulse"
+                          >
+                            Verify & Unlock
+                          </button>
+                        ) : (
+                          <span className="bg-neutral-800 text-neutral-400 px-2.5 py-1 text-[10px] uppercase font-bold rounded flex items-center gap-1.5 leading-none shrink-0 font-sans">
+                            Connecting...
+                          </span>
+                        )
+                      ) : audiobooksHandle ? (
                         <div className="flex items-center gap-2">
                           <button
                             type="button"
@@ -761,9 +1332,9 @@ export default function BookrrSettings({ books = [], config, indexers, logs, onS
                       )}
                     </div>
                   </div>
-                  {audiobooksHandle && (
+                  {(audiobooksHandle || rootName) && (
                     <div className="text-[9px] font-mono text-neutral-400 border-t border-neutral-850 pt-2">
-                      <span className="truncate block">📂 Audiobooks Destination: {audiobooksHandle.name}</span>
+                      <span className="truncate block">📂 Audiobooks Destination: {audiobooksHandle ? audiobooksHandle.name : `${rootName}/audiobooks`}</span>
                     </div>
                   )}
                 </div>

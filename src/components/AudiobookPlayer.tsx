@@ -28,7 +28,7 @@ import {
   ChevronDown
 } from 'lucide-react';
 import { Book, AudiobookChapter } from '../types';
-import { getOfflineFile } from '../services/LocalFileService';
+import { getOfflineFile, getOfflineChapterFile } from '../services/LocalFileService';
 
 interface AudiobookPlayerProps {
   book: Book;
@@ -70,6 +70,7 @@ export default function AudiobookPlayer({ book, onClose, onUpdateProgress }: Aud
 
   // Local Offline Blob player setup
   const [localBlobUrl, setLocalBlobUrl] = useState<string | null>(null);
+  const [localChapterBlobUrl, setLocalChapterBlobUrl] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -133,8 +134,41 @@ export default function AudiobookPlayer({ book, onClose, onUpdateProgress }: Aud
   const activeChapterIdx = chapters.findIndex(ch => currentTime >= ch.start && currentTime < ch.end);
   const activeChapter: AudiobookChapter = (chapters[activeChapterIdx] || chapters[0] || { id: 'fallback', title: 'Introductory Section', start: 0, end: duration, fileUrl: book.fileUrl }) as AudiobookChapter;
 
-  // Current audio source - if chapter has its own file, use it, else fallback to browser cache or book file
-  const currentAudioSrc = activeChapter.fileUrl || localBlobUrl || book.fileUrl;
+  useEffect(() => {
+    let active = true;
+    let urlToRevoke: string | null = null;
+
+    async function checkChapterOffline() {
+      if (activeChapter && activeChapter.id && activeChapter.id !== 'fallback') {
+        try {
+          const offlineChapter = await getOfflineChapterFile(book.id, activeChapter.id);
+          if (offlineChapter && active) {
+            const url = URL.createObjectURL(offlineChapter.blob);
+            urlToRevoke = url;
+            setLocalChapterBlobUrl(url);
+            return;
+          }
+        } catch (e) {
+          console.error("Chapter LocalFile check failed in AudiobookPlayer:", e);
+        }
+      }
+      if (active) {
+        setLocalChapterBlobUrl(null);
+      }
+    }
+
+    checkChapterOffline();
+
+    return () => {
+      active = false;
+      if (urlToRevoke) {
+        URL.revokeObjectURL(urlToRevoke);
+      }
+    };
+  }, [book.id, activeChapter?.id]);
+
+  // Current audio source - if chapter has its own cached file, use it! Otherwise if chapter starts with its own fileUrl, use it. Otherwise fell back to main offline blob or main fileUrl
+  const currentAudioSrc = localChapterBlobUrl || activeChapter.fileUrl || localBlobUrl || book.fileUrl;
 
   // Synchronize audio element with state
   useEffect(() => {
@@ -359,7 +393,7 @@ export default function AudiobookPlayer({ book, onClose, onUpdateProgress }: Aud
                     <span className="flex items-center gap-2"><Compass className="w-4 h-4" /> Stats</span>
                     <button onClick={() => setActiveMenu(null)}><X className="w-5 h-5" /></button>
                   </div>
-                  <div className="flex justify-between"><span>Format:</span><span className="text-neutral-200">M4B Audio</span></div>
+                  <div className="flex justify-between"><span>Format:</span><span className="text-neutral-200">{book.fileUrl?.split('.').pop()?.toUpperCase() || 'Audio'} format</span></div>
                   <div className="flex justify-between"><span>Duration:</span><span className="text-neutral-200">{formatTime(duration)}</span></div>
                   <div className="flex justify-between"><span>Progress:</span><span className="text-amber-400 font-bold">{Math.floor((currentTime / duration) * 100)}%</span></div>
                   <div className="flex justify-between border-t border-neutral-800/40 pt-2 text-[10px] text-neutral-500"><span>Source:</span><span className="truncate">Bookrr Local Storage</span></div>
@@ -449,7 +483,7 @@ export default function AudiobookPlayer({ book, onClose, onUpdateProgress }: Aud
                  {activeMenu === 'speed' && (
                     <div className="absolute bottom-16 bg-[#1a1a1a] border border-[#333] rounded-xl p-3 shadow-2xl flex flex-col gap-2 w-32 z-50 animate-in fade-in zoom-in-95">
                       {[1.0, 1.25, 1.5, 2.0].map((val) => (
-                         <button key={val} onClick={() => setPlaybackRate(val)} className={`text-sm py-1.5 rounded-lg ${playbackRate === val ? 'bg-amber-500 text-black font-bold' : 'text-neutral-300 bg-neutral-800'}`}>
+                         <button key={`speed-${val}`} onClick={() => setPlaybackRate(val)} className={`text-sm py-1.5 rounded-lg ${playbackRate === val ? 'bg-amber-500 text-black font-bold' : 'text-neutral-300 bg-neutral-800'}`}>
                            {val.toFixed(2)}x
                          </button>
                       ))}
@@ -949,7 +983,7 @@ export default function AudiobookPlayer({ book, onClose, onUpdateProgress }: Aud
               <div className="space-y-1.5">
                 <div className="flex justify-between">
                   <span>File Format:</span>
-                  <span className="text-neutral-200">M4B (AAC codec)</span>
+                  <span className="text-neutral-200">{book.fileUrl?.split('.').pop()?.toUpperCase() || 'Audio'}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Audio Bitrate:</span>
@@ -1011,7 +1045,7 @@ export default function AudiobookPlayer({ book, onClose, onUpdateProgress }: Aud
               <div className="grid grid-cols-4 gap-1">
                 {[1.0, 1.25, 1.5, 1.75, 2.0, 2.5].map((val) => (
                   <button
-                    key={val}
+                    key={`speed-preset-${val}`}
                     onClick={() => setPlaybackRate(val)}
                     className={`py-1 rounded text-[10px] font-semibold cursor-pointer transition ${
                       playbackRate === val 

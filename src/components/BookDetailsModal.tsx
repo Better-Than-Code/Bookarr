@@ -17,12 +17,16 @@ interface BookDetailsModalProps {
   onUpdateBook: () => void;
 }
 
+import { ensureFilePermission, getDirectoryHandle, verifyDirectoryPermission, saveFileHandle, saveOfflineFile } from '../services/LocalFileService';
+import { sanitizePathName } from '../services/LocalOrganizerService';
+
 export default function BookDetailsModal({ book, onClose, onPlay, onRead, isAvailable, onUpdateBook }: BookDetailsModalProps) {
   const [isSyncingMeta, setIsSyncingMeta] = useState(false);
   const [isAutoSyncing, setIsAutoSyncing] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [showMetadataSearch, setShowMetadataSearch] = useState(false);
+  const [organizingStatus, setOrganizingStatus] = useState<string | null>(null);
 
   // Edit states
   const [editData, setEditData] = useState({
@@ -52,7 +56,7 @@ export default function BookDetailsModal({ book, onClose, onPlay, onRead, isAvai
       isbn: book.isbn || ''
     });
     setSearchTitle(book.title);
-  }, [book]);
+  }, [book.id]);
 
   const selectResult = (result: any) => {
     setEditData(prev => ({
@@ -107,27 +111,94 @@ export default function BookDetailsModal({ book, onClose, onPlay, onRead, isAvai
   };
 
   const handleOrganize = async () => {
+    const destType = book.type === 'audiobook' ? 'audiobooks' : 'ebooks';
     try {
-      const res = await fetch(`/api/books/${book.id}/organize`, {
-        method: 'POST',
-      });
+      setOrganizingStatus('Checking local storage configuration...');
+      const handle = await getDirectoryHandle(destType);
       
-      const data = await res.json();
-      if (res.ok) {
-        onUpdateBook();
-        alert('File organized successfully into the Bookrr repository.');
-      } else {
-        alert('Organization failed: ' + (data.error || 'Unknown error'));
+      if (!handle) {
+        setOrganizingStatus(null);
+        alert(`The organized destination directory for ${book.type === 'audiobook' ? 'Audiobooks' : 'Ebooks'} is unconfigured on this device. Please connect it in Settings folder selection.`);
+        return;
       }
-    } catch (e) {
-      console.error('Failed to request organization', e);
-      alert('Network error when requesting organization.');
+      
+      const hasPerm = await verifyDirectoryPermission(handle, true, true);
+      if (!hasPerm) {
+        setOrganizingStatus(null);
+        alert(`Missing write permission to write into your device's organized ${destType} folder.`);
+        return;
+      }
+
+      setOrganizingStatus('Fetching file from server staging area...');
+      if (!book.fileUrl) {
+        setOrganizingStatus(null);
+        alert('File URL is not available on the server. Make sure download has finished.');
+        return;
+      }
+
+      // Fetch the file from server
+      const fileRes = await fetch(book.fileUrl);
+      if (!fileRes.ok) {
+        throw new Error(`Server returned HTTP ${fileRes.status}`);
+      }
+      const blob = await fileRes.blob();
+
+      setOrganizingStatus('Writing organized file onto your device storage...');
+      const authorFolder = sanitizePathName(book.author);
+      const bookFolder = sanitizePathName(book.title);
+      const ext = book.filePath ? book.filePath.split('.').pop() || 'epub' : 'epub';
+      const finalFileName = `${bookFolder} - ${authorFolder}.${ext}`;
+
+      // Create folders as needed
+      const authorDirHandle = await handle.getDirectoryHandle(authorFolder, { create: true });
+      const bookDirHandle = await authorDirHandle.getDirectoryHandle(bookFolder, { create: true });
+      
+      // Write file contents
+      const fileHandle = await bookDirHandle.getFileHandle(finalFileName, { create: true });
+      const writable = await fileHandle.createWritable();
+      await writable.write(blob);
+      await writable.close();
+
+      setOrganizingStatus('Registering file inside IndexedDB database...');
+
+      // Save offline file and handle locally
+      const relativeDest = `${book.type === 'audiobook' ? 'Audiobooks' : 'Ebooks'}/${authorFolder}/${bookFolder}/${finalFileName}`;
+      await saveOfflineFile(book.id, finalFileName, blob, relativeDest);
+      await saveFileHandle(book.id, fileHandle, relativeDest);
+
+      setOrganizingStatus('Updating library database...');
+      // Sync status with server
+      const updateRes = await fetch(`/api/books/${book.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isDownloaded: true, filePath: relativeDest })
+      });
+
+      if (!updateRes.ok) {
+        const errText = await updateRes.text();
+        throw new Error(`Server failed to update book status: ${errText}`);
+      }
+
+      setOrganizingStatus(null);
+      alert(`Successfully organized "${book.title}" on your device storage!\nLocation: Bookrr > ${destType} > ${authorFolder} > ${bookFolder}`);
+      onUpdateBook();
+    } catch (e: any) {
+      console.error('Failed to organize file locally:', e);
+      setOrganizingStatus(null);
+      alert(`Local organization failed: ${e.message || String(e)}`);
     }
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-[#121212] border border-[#222] rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+      <div className="bg-[#121212] border border-[#222] rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh] relative">
+        {organizingStatus && (
+          <div className="absolute inset-0 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center z-50 text-neutral-200 px-8 text-center animate-in fade-in duration-300">
+            <RefreshCw className="w-10 h-10 text-amber-500 animate-spin mb-4" />
+            <h4 className="font-sans font-bold text-base mb-1 tracking-tight text-neutral-100">{organizingStatus}</h4>
+            <p className="text-xs text-neutral-500 max-w-xs leading-relaxed">Please keep this browser window active. Writing directly to your device directories.</p>
+          </div>
+        )}
         
         {/* Header */}
         <div className="p-4 border-b border-[#222] flex items-center justify-between bg-[#181818]">
@@ -329,7 +400,14 @@ export default function BookDetailsModal({ book, onClose, onPlay, onRead, isAvai
           {/* Action Bar */}
           <div className="pt-4 border-t border-[#222] flex flex-wrap gap-3">
               <button 
-                onClick={() => book.type === 'audiobook' ? onPlay(book) : onRead(book)}
+                onClick={async () => {
+                  const hasPerms = await ensureFilePermission(book.id);
+                  if (!hasPerms) {
+                    alert('Permission to read file was denied. You may need to safely Re-Link the file from Configure or Sync folders again.');
+                    return;
+                  }
+                  book.type === 'audiobook' ? onPlay(book) : onRead(book);
+                }}
                 disabled={!isAvailable}
                 className={`flex-1 min-w-[140px] flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm transition shadow-lg ${isAvailable ? 'bg-amber-500 text-black hover:bg-amber-400 active:scale-95' : 'bg-[#222] text-neutral-600 cursor-not-allowed opacity-50'}`}
               >

@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Search, Download, Database, Users, Calendar, ShieldCheck, HelpCircle } from 'lucide-react';
+import { Search, Download, Database, Users, Calendar, ShieldCheck, HelpCircle, Flame, Zap, AlertTriangle, Filter, ArrowUpDown, Radio } from 'lucide-react';
 import { TorrentSearchResult, BookrrConfig, IndexerSettings } from '../types';
 
 interface IndexerSearchProps {
@@ -74,6 +74,77 @@ export default function IndexerSearch({
   const [statusMessage, setStatusMessage] = useState('');
   const [inspectingId, setInspectingId] = useState<string | null>(null);
   const [inspectedFiles, setInspectedFiles] = useState<Record<string, any[]>>({});
+
+  const [selectedTracker, setSelectedTracker] = useState<string>('All');
+  const [minSeedsFilter, setMinSeedsFilter] = useState<number>(0);
+  const [sortBy, setSortBy] = useState<'score' | 'seeds' | 'peers' | 'size'>('score');
+  const [localSearchQuery, setLocalSearchQuery] = useState<string>('');
+
+  // Helper function to convert size strings to megabytes (MB) for precise sorting
+  const parseSizeToMB = (sizeStr: string): number => {
+    if (!sizeStr) return 0;
+    const cleaned = sizeStr.replace(/,/g, '').trim().toLowerCase();
+    const match = cleaned.match(/^([\d.]+)\s*([a-z]*)/);
+    if (!match) return 0;
+    const val = parseFloat(match[1]);
+    const unit = match[2];
+    if (unit.startsWith('g')) return val * 1024;
+    if (unit.startsWith('m')) return val;
+    if (unit.startsWith('k')) return val / 1024;
+    if (unit.startsWith('t')) return val * 1024 * 1024;
+    return val;
+  };
+
+  // Dynamically compile a count map of trackers from current results to populate capsule filters
+  const currentTrackerCounts = React.useMemo(() => {
+    const counts: Record<string, number> = {};
+    searchResults.forEach(r => {
+      if (r.indexer) {
+        counts[r.indexer] = (counts[r.indexer] || 0) + 1;
+      }
+    });
+    return counts;
+  }, [searchResults]);
+
+  // Apply filters and sorting on the search results client-side
+  const filteredAndSortedResults = React.useMemo(() => {
+    let list = [...searchResults];
+
+    // 1. Indexer / Tracker filter
+    if (selectedTracker !== 'All') {
+      list = list.filter(r => r.indexer === selectedTracker);
+    }
+
+    // 2. Minimum Seeds threshold filter
+    if (minSeedsFilter > 0) {
+      list = list.filter(r => r.seeds >= minSeedsFilter);
+    }
+
+    // 3. Sub-filtering by text inside titles
+    if (localSearchQuery) {
+      const q = localSearchQuery.toLowerCase().trim();
+      list = list.filter(r => r.title.toLowerCase().includes(q));
+    }
+
+    // 4. Sort results
+    list.sort((a, b) => {
+      if (sortBy === 'seeds') {
+        return b.seeds - a.seeds;
+      }
+      if (sortBy === 'peers') {
+        return b.peers - a.peers;
+      }
+      if (sortBy === 'size') {
+        return parseSizeToMB(b.size) - parseSizeToMB(a.size);
+      }
+      // Default: "score" based on seeds & peers relevance weights
+      const scoreA = (a.seeds * 3) + (a.peers * 1);
+      const scoreB = (b.seeds * 3) + (b.peers * 1);
+      return scoreB - scoreA;
+    });
+
+    return list;
+  }, [searchResults, selectedTracker, minSeedsFilter, sortBy, localSearchQuery]);
 
   // Initial trigger to fetch defaults
   const handleSearch = async (e?: React.FormEvent | string) => {
@@ -322,32 +393,138 @@ export default function IndexerSearch({
 
       {/* Grid Results */}
       <div className="space-y-4 text-left">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#222] pb-3">
           <span className="font-sans font-bold text-sm text-neutral-300">
-            {searchResults.length} Tracker Results Found
+            {filteredAndSortedResults.length} of {searchResults.length} Tracker Results Shown
           </span>
           <div className="flex items-center gap-2 text-xs font-mono text-neutral-500">
-            <ShieldCheck className="w-4 h-4 text-emerald-500" />
-            <span>Encrypted Indexing</span>
+            <Radio className="w-3.5 h-3.5 text-emerald-500 animate-pulse" />
+            <span>Active Tracker Queries: {indexers.filter(i => i.enabled).length}</span>
           </div>
         </div>
 
+        {/* Dynamic Tracker Filters & Sorting Control Center */}
+        {searchResults.length > 0 && (
+          <div className="bg-[#111111] border border-[#222222] p-4 rounded-xl space-y-3.5 shadow-md">
+            <div className="flex items-center justify-between border-b border-[#1d1d1d] pb-2">
+              <span className="text-[11px] font-bold text-neutral-400 font-mono uppercase tracking-wider flex items-center gap-1.5">
+                <Filter className="w-3.5 h-3.5 text-amber-500" /> Indexer Filtration & Parameters
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedTracker('All');
+                  setMinSeedsFilter(0);
+                  setSortBy('score');
+                  setLocalSearchQuery('');
+                }}
+                className="text-[10px] text-amber-500 hover:text-amber-400 transition font-mono font-semibold"
+              >
+                Reset Controls
+              </button>
+            </div>
+
+            {/* Tracker Pills selection */}
+            <div className="space-y-2">
+              <span className="text-[10px] text-neutral-500 font-mono font-medium block">Select Tracker Source:</span>
+              <div className="flex flex-wrap gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setSelectedTracker('All')}
+                  className={`text-[10px] px-2.5 py-1 rounded-full border transition duration-150 font-mono ${
+                    selectedTracker === 'All'
+                      ? 'bg-amber-500 text-black font-semibold border-amber-600'
+                      : 'bg-[#181818] text-neutral-400 border-[#222] hover:text-neutral-200'
+                  }`}
+                >
+                  All ({searchResults.length})
+                </button>
+                {Object.keys(currentTrackerCounts).map(tracker => (
+                  <button
+                    key={tracker}
+                    type="button"
+                    onClick={() => setSelectedTracker(tracker)}
+                    className={`text-[10px] px-2.5 py-1 rounded-full border transition duration-150 font-mono ${
+                      selectedTracker === tracker
+                        ? 'bg-amber-500 text-black font-semibold border-amber-600'
+                        : 'bg-[#181818] text-neutral-400 border-[#222] hover:text-neutral-200'
+                    }`}
+                  >
+                    {tracker} ({currentTrackerCounts[tracker]})
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Inputs & Sorting Row */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
+              {/* String matcher */}
+              <div className="space-y-1">
+                <label className="text-[10px] text-neutral-500 font-mono block">Text Search Filter:</label>
+                <div className="relative">
+                  <Search className="w-3 h-3 text-neutral-600 absolute left-2.5 top-2.5" />
+                  <input
+                    type="text"
+                    value={localSearchQuery}
+                    onChange={(e) => setLocalSearchQuery(e.target.value)}
+                    placeholder="Refining matches inside current stream..."
+                    className="w-full bg-[#161616] border border-[#222] text-xs text-neutral-200 rounded-lg py-1.5 pl-8 pr-3 focus:outline-none focus:border-amber-500 font-sans"
+                  />
+                </div>
+              </div>
+
+              {/* Min Seeds select */}
+              <div className="space-y-1">
+                <label className="text-[10px] text-neutral-500 font-mono block">Min Seeders Metric:</label>
+                <select
+                  value={minSeedsFilter}
+                  onChange={(e) => setMinSeedsFilter(Number(e.target.value))}
+                  className="w-full bg-[#161616] border border-[#222] text-xs text-neutral-300 rounded-lg py-1.5 px-2.5 focus:outline-none focus:border-amber-500 font-sans"
+                >
+                  <option value={0}>All Results (including stale/dead)</option>
+                  <option value={1}>Active Swarms only (1+ Seeds)</option>
+                  <option value={5}>Healthy Swarms only (5+ Seeds)</option>
+                  <option value={15}>Rich Core Speeders only (15+ Seeds)</option>
+                </select>
+              </div>
+
+              {/* Dynamic sort criteria */}
+              <div className="space-y-1">
+                <label className="text-[10px] text-neutral-500 font-mono block">Sort Criteria Order:</label>
+                <div className="relative">
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value as any)}
+                    className="w-full bg-[#161616] border border-[#222] text-xs text-neutral-300 rounded-lg py-1.5 px-2.5 pr-8 focus:outline-none focus:border-amber-500 font-sans appearance-none"
+                  >
+                    <option value="score">Quality Score Rank (Relevance)</option>
+                    <option value="seeds">Seeders Count (High to Low)</option>
+                    <option value="peers">Leechers Count (High to Low)</option>
+                    <option value="size">Content Size (Largest to Smallest)</option>
+                  </select>
+                  <ArrowUpDown className="w-3 h-3 text-neutral-500 absolute right-2.5 top-2.5 pointer-events-none" />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* List Content */}
-        {searchResults.length === 0 ? (
+        {filteredAndSortedResults.length === 0 ? (
           <div className="p-12 text-center bg-[#111] rounded-2xl border border-[#222]">
             <HelpCircle className="w-8 h-8 text-neutral-600 mx-auto mb-2" />
             <p className="text-neutral-400 font-sans text-sm font-medium">
-                {!searchedOnce ? 'Ready to explore indexers?' : 'No results found for your query.'}
+                {!searchedOnce ? 'Ready to explore indexers?' : 'No matches found.'}
             </p>
             <p className="text-neutral-600 font-sans text-xs mt-1">
                 {!searchedOnce 
                     ? 'Enter a title or author above and hit Explore to start aggregating results.' 
-                    : 'Try another keyword, use different terms, or verify your indexer settings.'}
+                    : 'Adjust your active filters, reduce seed thresholds, or clear search queries.'}
             </p>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-3.5">
-            {searchResults.map((result) => (
+            {filteredAndSortedResults.map((result) => (
               <React.Fragment key={result.id}>
                 <div
                   onMouseEnter={() => enrichResult(result)}
@@ -355,7 +532,7 @@ export default function IndexerSearch({
                   result.error ? 'bg-[#1a0a0a] border-red-900/30' : 'bg-[#121212] border-[#222] hover:border-[#333]'
                 }`}
               >
-                <div className="flex-1 space-y-1">
+                <div className="flex-1 space-y-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className={`text-[10px] font-mono font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${
                       result.error ? 'bg-red-500/10 text-red-500' : 'bg-amber-500/10 text-amber-500'
@@ -366,10 +543,10 @@ export default function IndexerSearch({
                       {result.indexer}
                     </span>
                     {enrichedData[result.id] && !result.error && (
-                      <span className="text-[10px] font-mono text-emerald-500">+ Meta</span>
+                      <span className="text-[10px] font-mono text-emerald-500 font-semibold bg-emerald-500/10 px-1.5 rounded">+ Micro Metadata</span>
                     )}
                   </div>
-                  <h3 className="font-sans font-semibold text-sm text-neutral-200 leading-tight">
+                  <h3 className="font-sans font-semibold text-sm text-neutral-200 leading-tight block truncate pr-2" title={result.title}>
                     {result.title}
                   </h3>
                   {result.error ? (
@@ -379,27 +556,114 @@ export default function IndexerSearch({
                   )}
                   {!result.error && (
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs font-mono text-neutral-500 pt-1">
-                    <span className="flex items-center gap-1">
-                      <Database className="w-3.5 h-3.5" />
+                    <span className="flex items-center gap-1 bg-neutral-900 px-1.5 py-0.5 rounded border border-neutral-800 text-neutral-400">
+                      <Database className="w-3.5 h-3.5 text-neutral-500" />
                       {result.size}
                     </span>
-                    <span className="flex items-center gap-1 text-emerald-500">
-                      <Users className="w-3.5 h-3.5 text-emerald-500" />
-                      {result.seeds} Seeds
-                    </span>
-                    <span className="flex items-center gap-1">
-                      {result.peers} Peers
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Calendar className="w-3.5 h-3.5" />
+                    <span className="flex items-center gap-1 bg-neutral-900 px-1.5 py-0.5 rounded border border-neutral-800 text-neutral-400">
+                      <Calendar className="w-3.5 h-3.5 text-neutral-500" />
                       {result.publishDate}
                     </span>
                   </div>
                   )}
+
+                  {/* High-Fi Torrent Health Gauge Row */}
+                  {!result.error && (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 pt-2.5 mt-2 border-t border-[#1a1a1a] items-center">
+                      <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                        <span className="text-[10px] font-mono font-semibold text-neutral-500 uppercase">SWARM REAL-TIME HEALTH:</span>
+                        
+                        {/* Rating Badge */}
+                        {(() => {
+                          const s = result.seeds;
+                          if (s >= 20) {
+                            return (
+                              <span className="inline-flex items-center gap-1 text-[9px] font-bold font-mono tracking-wider text-emerald-400 bg-emerald-500/10 border border-emerald-500/25 px-2 py-0.5 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.15)] pr-2.5 shrink-0">
+                                <Flame className="w-3 h-3 text-red-400 fill-red-400" /> EXCELLENT
+                              </span>
+                            );
+                          } else if (s >= 5) {
+                            return (
+                              <span className="inline-flex items-center gap-1 text-[9px] font-bold font-mono text-teal-400 bg-teal-500/10 border border-teal-500/25 px-2 py-0.5 rounded-full shrink-0">
+                                <Zap className="w-3 h-3 text-amber-400 fill-amber-400" /> STABLE
+                              </span>
+                            );
+                          } else if (s >= 1) {
+                            return (
+                              <span className="inline-flex items-center gap-1 text-[9px] font-bold font-mono text-amber-500 bg-amber-500/10 border border-amber-500/25 px-2 py-0.5 rounded-full shrink-0 animate-pulse">
+                                <Radio className="w-3 h-3 text-neutral-400" /> SLOW SWARM
+                              </span>
+                            );
+                          } else {
+                            return (
+                              <span className="inline-flex items-center gap-1 text-[9px] font-bold font-mono text-red-500 bg-red-500/10 border border-red-500/25 px-2 py-0.5 rounded-full shrink-0">
+                                <AlertTriangle className="w-3 h-3 text-red-500" /> STALE / DEAD
+                              </span>
+                            );
+                          }
+                        })()}
+
+                        {/* Visual LED segments represent speed and health index strength */}
+                        <div className="flex gap-0.5 h-3 items-center shrink-0">
+                          {Array.from({ length: 5 }).map((_, idx) => {
+                            const s = result.seeds;
+                            let lightClass = 'bg-neutral-900 border border-neutral-800/60';
+                            
+                            if (s >= 20) {
+                              lightClass = 'bg-emerald-500 shadow-[0_0_5px_rgba(16,185,129,0.5)]';
+                            } else if (s >= 10 && idx < 4) {
+                              lightClass = 'bg-teal-500';
+                            } else if (s >= 5 && idx < 3) {
+                              lightClass = 'bg-teal-500';
+                            } else if (s >= 2 && idx < 2) {
+                              lightClass = 'bg-amber-500';
+                            } else if (s >= 1 && idx < 1) {
+                              lightClass = 'bg-amber-600';
+                            }
+
+                            return (
+                              <div 
+                                key={idx} 
+                                className={`w-1.5 h-full rounded-[1px] transition-all duration-300 ${lightClass}`} 
+                                title={`Health indicator cell ${idx + 1}`}
+                              />
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Seeders & Leechers numerical telemetry */}
+                      <div className="flex items-center gap-2 lg:justify-end text-[10px] font-mono">
+                        <span className="bg-[#151515] border border-[#222] px-2 py-0.5 rounded text-emerald-400 font-semibold shadow-sm">
+                          {result.seeds} <span className="text-neutral-500 font-normal text-[9px]">Seeds</span>
+                        </span>
+                        <span className="bg-[#151515] border border-[#222] px-2 py-0.5 rounded text-neutral-400">
+                          {result.peers} <span className="text-neutral-500 text-[9px]">Peers</span>
+                        </span>
+
+                        {(() => {
+                          const total = result.seeds + result.peers;
+                          const ratio = total > 0 ? Math.round((result.seeds / total) * 100) : 0;
+                          return (
+                            <div className="flex items-center gap-1.5 bg-[#151515] border border-[#222] px-2 py-0.5 rounded">
+                              <span className="text-neutral-500 text-[9px]">S/L Ratio:</span>
+                              <div className="w-10 bg-neutral-800 h-1 rounded overflow-hidden">
+                                <div 
+                                  className={`h-full rounded ${ratio > 60 ? 'bg-emerald-500' : ratio > 30 ? 'bg-amber-500' : 'bg-red-500'}`}
+                                  style={{ width: `${ratio}%` }}
+                                />
+                              </div>
+                              <span className="text-neutral-400 font-bold">{ratio}%</span>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {!result.error && (
-                  <div className="flex gap-2 shrink-0">
+                  <div className="flex gap-2 shrink-0 self-end md:self-center">
                     <button
                         onClick={() => inspectTorrent(result)}
                         disabled={inspectingId === result.id}
