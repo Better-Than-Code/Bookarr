@@ -412,6 +412,9 @@ export async function autoRelinkLibrary(
   const mappedFiles = autoMapFiles(combinedFiles, books);
   let restoredCount = 0;
 
+  // Group unmapped audio files by their directory (using file.path relative to root)
+  const unmappedAudiobooks: Record<string, WatchFolderFile[]> = {};
+
   for (const file of mappedFiles) {
     if (file.autoMappedBook && file.type !== "cover") {
       const book = file.autoMappedBook;
@@ -424,13 +427,155 @@ export async function autoRelinkLibrary(
           const relativeDest = `${isAudio ? "Audiobooks" : "Ebooks"}/${authorFolder}/${bookFolder}/${file.name}`;
 
           await saveFileHandle(book.id, file.handle, relativeDest);
-          // Removed fake placeholder blob. getOfflineBooksMap now relies on handle.
-
           restoredCount++;
         } catch (e) {
           console.error(`Failed to relink ${book.title}`, e);
         }
       }
+    } else if (!file.autoMappedBook && file.type === "ebook") {
+      // Auto import unmapped locally discovered ebook!
+      try {
+        let titleGuess = file.name.replace(/\.[^/.]+$/, "");
+        let authorGuess = "Unknown Author (Scanned Local)";
+
+        const pathParts = file.path.split("/");
+        if (pathParts.length >= 3) {
+          authorGuess = pathParts[0];
+          titleGuess = pathParts[1];
+        } else if (pathParts.length >= 2) {
+          titleGuess = pathParts[0];
+        } else if (titleGuess.includes("-")) {
+          const parts = titleGuess.split("-");
+          titleGuess = parts[0].trim();
+          authorGuess = parts[1].trim();
+        }
+
+        const newBook = {
+          title: titleGuess,
+          author: authorGuess,
+          type: file.type,
+          coverUrl:
+            "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?q=80&w=200&auto=format&fit=crop",
+          description: `Automatically imported from local library path: ${file.path}`,
+          genres: ["Uncategorized"],
+        };
+
+        const res = await fetch("/api/books", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(newBook),
+        });
+
+        if (res.ok) {
+          const savedBooks = await res.json();
+          const addedBook = savedBooks[savedBooks.length - 1];
+
+          if (addedBook && addedBook.id) {
+            const authorFolder = sanitizePathName(addedBook.author);
+            const bookFolder = sanitizePathName(addedBook.title);
+            const relativeDest = `Ebooks/${authorFolder}/${bookFolder}/${file.name}`;
+            await saveFileHandle(addedBook.id, file.handle, relativeDest);
+            restoredCount++;
+            offlineMap[addedBook.id] = relativeDest;
+          }
+        }
+      } catch (e) {
+        console.error("Failed to auto-import unmapped local file", e);
+      }
+    } else if (!file.autoMappedBook && file.type === "audiobook") {
+      const pathParts = file.path.split("/");
+      // Map to directory name, default to "root" if in root folder
+      const dirName =
+        pathParts.length > 1 ? pathParts.slice(0, -1).join("/") : "root";
+      if (!unmappedAudiobooks[dirName]) {
+        unmappedAudiobooks[dirName] = [];
+      }
+      unmappedAudiobooks[dirName].push(file);
+    }
+  }
+
+  // Handle unmapped audiobooks grouped by directory
+  for (const [dir, files] of Object.entries(unmappedAudiobooks)) {
+    files.sort((a, b) => a.name.localeCompare(b.name));
+    const firstFile = files[0];
+
+    try {
+      let titleGuess =
+        dir === "root"
+          ? firstFile.name.replace(/\.[^/.]+$/, "")
+          : dir.split("/").pop() || "Unknown Title";
+      let authorGuess = "Unknown Author (Scanned Local)";
+
+      const pathParts = firstFile.path.split("/");
+      if (dir !== "root") {
+        if (pathParts.length >= 3) {
+          authorGuess = pathParts[0];
+          titleGuess = pathParts[1];
+        } else if (pathParts.length >= 2) {
+          titleGuess = pathParts[0];
+        }
+      } else if (titleGuess.includes("-")) {
+        const parts = titleGuess.split("-");
+        titleGuess = parts[0].trim();
+        authorGuess = parts[1].trim();
+      }
+
+      const mappedChapters = files.map((af, i) => {
+        return {
+          id: `chapter-${i}`,
+          title: af.name.replace(/\.[^/.]+$/, ""),
+          start: 0,
+          end: 0,
+          fileUrl: "", // Replaced when played
+        };
+      });
+
+      const newBook = {
+        title: titleGuess,
+        author: authorGuess,
+        type: "audiobook",
+        coverUrl:
+          "https://images.unsplash.com/photo-1478737270239-2f02b77fc618?q=80&w=200&auto=format&fit=crop",
+        description: `Automatically imported audiobook from local library`,
+        genres: ["Uncategorized"],
+        chapters: files.length > 1 ? mappedChapters : undefined,
+      };
+
+      const res = await fetch("/api/books", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newBook),
+      });
+
+      if (res.ok) {
+        const savedBooks = await res.json();
+        const addedBook = savedBooks[savedBooks.length - 1];
+
+        if (addedBook && addedBook.id) {
+          const authorFolder = sanitizePathName(addedBook.author);
+          const bookFolder = sanitizePathName(addedBook.title);
+
+          if (files.length > 1) {
+            for (let i = 0; i < files.length; i++) {
+              const af = files[i];
+              const relativeDest = `Audiobooks/${authorFolder}/${bookFolder}/${af.name}`;
+              const compositeId = `${addedBook.id}::ch::chapter-${i}`;
+              await saveFileHandle(compositeId, af.handle, relativeDest);
+            }
+            // Set base handle to first file
+            const baseDest = `Audiobooks/${authorFolder}/${bookFolder}/${firstFile.name}`;
+            await saveFileHandle(addedBook.id, firstFile.handle, baseDest);
+            offlineMap[addedBook.id] = baseDest;
+          } else {
+            const relativeDest = `Audiobooks/${authorFolder}/${bookFolder}/${firstFile.name}`;
+            await saveFileHandle(addedBook.id, firstFile.handle, relativeDest);
+            offlineMap[addedBook.id] = relativeDest;
+          }
+          restoredCount++;
+        }
+      }
+    } catch (e) {
+      console.error("Failed to auto-import unmapped audiobook", e);
     }
   }
 

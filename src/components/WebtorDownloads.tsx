@@ -28,6 +28,7 @@ import {
   verifyDirectoryPermission,
   saveOfflineFile,
   saveFileHandle,
+  saveOfflineChapterFile,
 } from "../services/LocalFileService";
 import {
   scanWatchFolder,
@@ -36,6 +37,7 @@ import {
   WatchFolderFile,
   sanitizePathName,
 } from "../services/LocalOrganizerService";
+import { processTorrentFiles, TorrentBookGroup } from "../services/TorrentImportService";
 import {
   extractFileMetadata,
   ExtractedMetadata,
@@ -68,6 +70,9 @@ export default function WebtorDownloads({
   const [watchFolderFiles, setWatchFolderFiles] = useState<WatchFolderFile[]>(
     [],
   );
+  const [watchFolderGroups, setWatchFolderGroups] = useState<
+    TorrentBookGroup[]
+  >([]);
   const [manualMappedBookIds, setManualMappedBookIds] = useState<{
     [filePath: string]: string;
   }>({});
@@ -312,11 +317,15 @@ export default function WebtorDownloads({
 
         if (!permStatus.watch && !permStatus.watchInternal) {
           setWatchFolderFiles([]);
+          setWatchFolderGroups([]);
           return;
         }
 
         const mapped = autoMapFiles(combinedFiles, books);
         setWatchFolderFiles(mapped);
+
+        const groups = await processTorrentFiles(mapped);
+        setWatchFolderGroups(groups);
       } catch (e) {
         console.error("Watch directory scan failed:", e);
       } finally {
@@ -344,6 +353,219 @@ export default function WebtorDownloads({
   const unlockWatchFolder = async () => {
     await doFolderScan(true);
   };
+
+  const handleOrganizeGroup = useCallback(
+    async (group: TorrentBookGroup) => {
+      if (!watchDirHandle && !watchInternalDirHandle) {
+        alert("No watch directory available.");
+        return;
+      }
+
+      setOrganizingFilesMap((prev) => ({ ...prev, [group.title]: true }));
+      try {
+        let targetBookId = "";
+        const existing = books.find(
+          (b) =>
+            b.title.toLowerCase() === group.title.toLowerCase() &&
+            b.author.toLowerCase() === group.author.toLowerCase(),
+        );
+
+        if (existing) {
+          targetBookId = existing.id;
+        } else {
+          const isAudio = group.audioFiles.length > 0 && !group.bestEbook;
+          const mappedChapters = group.audioFiles.map((af, i) => ({
+            id: `chapter-${i}`,
+            title: af.name.replace(/\.[^/.]+$/, ""),
+            start: 0,
+            end: 0,
+            fileUrl: "",
+          }));
+
+          const newBook = {
+            title: group.title,
+            author: group.author,
+            type: isAudio ? "audiobook" : "ebook",
+            coverUrl: group.bestCoverUrl,
+            description: `Imported from: ${group.dirPath}`,
+            genres: ["Torrents"],
+            chapters:
+              isAudio && group.audioFiles.length > 1
+                ? mappedChapters
+                : undefined,
+          };
+
+          const res = await fetch("/api/books", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(newBook),
+          });
+
+          if (res.ok) {
+            const updatedBooks = await res.json();
+            const addedBook = updatedBooks[updatedBooks.length - 1];
+            if (addedBook) {
+              targetBookId = addedBook.id;
+            }
+          }
+        }
+
+        if (targetBookId) {
+          const activeBook = books.find((b) => b.id === targetBookId) || {
+            id: targetBookId,
+            title: group.title,
+            author: group.author,
+            type:
+              group.audioFiles.length > 0 && !group.bestEbook
+                ? "audiobook"
+                : "ebook",
+          };
+          const bookToUse: any = activeBook;
+          const destHandle =
+            bookToUse.type === "audiobook"
+              ? audiobooksDirHandle
+              : ebooksDirHandle;
+
+          if (destHandle) {
+            // Write permission check
+            const typeKey =
+              bookToUse.type === "audiobook" ? "audiobooks" : "ebooks";
+            if (!dirHasPermission[typeKey]) {
+              const perm = await verifyDirectoryPermission(
+                destHandle,
+                true,
+                true,
+              );
+              if (!perm) throw new Error("Missing write permissions.");
+              setDirHasPermission((prev) => ({ ...prev, [typeKey]: true }));
+            }
+
+            let ebookDestPath = "";
+            let audioDestPath = "";
+
+            if (group.bestEbook) {
+              const res = await organizeSingleFile(
+                group.bestEbook,
+                watchInternalDirHandle || watchDirHandle!,
+                destHandle,
+                bookToUse,
+              );
+              if (res.success && res.destFileHandle) {
+                ebookDestPath = res.destinationPath;
+                await saveFileHandle(
+                  targetBookId,
+                  res.destFileHandle,
+                  res.destinationPath,
+                );
+                if (res.fileObj) {
+                  await saveOfflineFile(
+                    targetBookId,
+                    group.bestEbook.name,
+                    res.fileObj as Blob,
+                    res.destinationPath,
+                  );
+                }
+              }
+            }
+            if (group.audioFiles.length > 0) {
+              for (let i = 0; i < group.audioFiles.length; i++) {
+                const af = group.audioFiles[i];
+                const res = await organizeSingleFile(
+                  af,
+                  watchInternalDirHandle || watchDirHandle!,
+                  audiobooksDirHandle || destHandle,
+                  bookToUse,
+                );
+                if (res.success && res.destFileHandle) {
+                  if (i === 0) {
+                    audioDestPath = res.destinationPath;
+                  }
+                  if (group.audioFiles.length > 1) {
+                    await saveFileHandle(
+                      `${targetBookId}::ch::chapter-${i}`,
+                      res.destFileHandle,
+                      res.destinationPath,
+                    );
+                    if (res.fileObj) {
+                      await saveOfflineChapterFile(
+                        targetBookId,
+                        `chapter-${i}`,
+                        af.name,
+                        res.fileObj as Blob,
+                        res.destinationPath,
+                      );
+                    }
+                  } else {
+                    await saveFileHandle(
+                      targetBookId,
+                      res.destFileHandle,
+                      res.destinationPath,
+                    );
+                    if (res.fileObj) {
+                      await saveOfflineFile(
+                        targetBookId,
+                        af.name,
+                        res.fileObj as Blob,
+                        res.destinationPath,
+                      );
+                    }
+                  }
+                  if (i === 0 && group.audioFiles.length > 1) {
+                    await saveFileHandle(
+                      targetBookId,
+                      res.destFileHandle,
+                      res.destinationPath,
+                    );
+                    if (res.fileObj) {
+                      await saveOfflineFile(
+                        targetBookId,
+                        af.name,
+                        res.fileObj as Blob,
+                        res.destinationPath,
+                      );
+                    }
+                  }
+                }
+              }
+            }
+
+            // Sync updated file info to server database
+            const finalFilePath = ebookDestPath || audioDestPath;
+            if (finalFilePath) {
+              await fetch(`/api/books/${targetBookId}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  isDownloaded: true,
+                  filePath: finalFilePath,
+                  fileUrl: `/api/files/${encodeURIComponent(finalFilePath.split("/").pop() || "")}`,
+                }),
+              });
+            }
+          }
+        }
+
+        setOrganizerStatusMessage(`Successfully cataloged: ${group.title}`);
+        doFolderScan();
+        if (onReloadLibrary) onReloadLibrary();
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setOrganizingFilesMap((prev) => ({ ...prev, [group.title]: false }));
+        setTimeout(() => setOrganizerStatusMessage(null), 6000);
+      }
+    },
+    [
+      watchDirHandle,
+      watchInternalDirHandle,
+      books,
+      audiobooksDirHandle,
+      ebooksDirHandle,
+      dirHasPermission,
+      onReloadLibrary,
+      doFolderScan,
+    ],
+  );
 
   const handlePullTorrentFiles = useCallback(
     async (task: TorrentTask) => {
@@ -426,9 +648,20 @@ export default function WebtorDownloads({
           [task.id]: { percent: 100, status: "completed" },
         }));
 
-        // Refresh watch list
-        setTimeout(() => {
+        setTimeout(async () => {
           doFolderScan(false);
+          try {
+            const subFolderFiles = await scanWatchFolder(
+              taskFolderHandle,
+              task.name,
+            );
+            const groups = await processTorrentFiles(subFolderFiles);
+            for (const g of groups) {
+              await handleOrganizeGroup(g);
+            }
+          } catch (err) {
+            console.error("Auto import post pull failed", err);
+          }
         }, 500);
       } catch (err: any) {
         console.error("[STAGING] Local sync staging error:", err);
@@ -462,158 +695,10 @@ export default function WebtorDownloads({
     tasks,
     watchInternalDirHandle,
     watchDirHandle,
-    handlePullTorrentFiles,
+    handleOrganizeGroup,
   ]);
 
-  // Run file organization
-  const handleOrganizeSingle = async (file: WatchFolderFile) => {
-    // 1. Establish book metadata mapping (auto or manual selection)
-    const selectedBookId =
-      manualMappedBookIds[file.path] || file.autoMappedBook?.id;
-    const targetBook = books.find((b) => b.id === selectedBookId);
-
-    if (!targetBook) {
-      alert(
-        "Please connect or manually map this file to a library volume before moving.",
-      );
-      return;
-    }
-
-    const destHandle =
-      targetBook.type === "audiobook" ? audiobooksDirHandle : ebooksDirHandle;
-    if (!destHandle) {
-      alert(
-        `The organized destination directory for ${targetBook.type === "audiobook" ? "Audiobooks" : "Ebooks"} is unconfigured. Please configure it in Settings.`,
-      );
-      return;
-    }
-
-    const typeKey = targetBook.type === "audiobook" ? "audiobooks" : "ebooks";
-    if (!dirHasPermission[typeKey]) {
-      const perm = await verifyDirectoryPermission(destHandle, true, true);
-      if (!perm) {
-        alert(
-          "Missing write permissions to organize into destination directories.",
-        );
-        return;
-      }
-      setDirHasPermission((prev) => ({ ...prev, [typeKey]: true }));
-    }
-
-    setOrganizingFilesMap((prev) => ({ ...prev, [file.path]: true }));
-    setOrganizerStatusMessage(`Sorting and sweeping [${file.name}]...`);
-
-    try {
-      const fallbackWatchDir = watchDirHandle || watchInternalDirHandle;
-      const result = await organizeSingleFile(
-        file,
-        fallbackWatchDir!,
-        destHandle,
-        targetBook,
-      );
-
-      if (result.success) {
-        setOrganizerStatusMessage(
-          `Successfully cataloged: Moved to / ${targetBook.type === "audiobook" ? "Audiobooks" : "Ebooks"} / ${result.destinationPath}`,
-        );
-
-        // Register the file handle for direct access later, instead of saving the blob in browser storage
-        try {
-          if (file.type === "cover") {
-            if (result.fileObj) {
-              const reader = new FileReader();
-              reader.readAsDataURL(result.fileObj);
-              reader.onload = async () => {
-                const coverUrl = reader.result as string;
-                try {
-                  await fetch(`/api/books/${targetBook.id}`, {
-                    method: "PUT",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ coverUrl }),
-                  });
-                  if (onReloadLibrary) onReloadLibrary();
-                } catch (e) {
-                  console.error("Failed to update cover url", e);
-                }
-              };
-            }
-          } else {
-            if (result.destFileHandle) {
-              await saveFileHandle(targetBook.id, result.destFileHandle);
-            }
-
-            // Enrich database with client-side extracted metadata if present
-            const localMeta = extractedMetadataMap[file.path];
-            const updatePayload: any = {
-              isDownloaded: true,
-              filePath: result.destinationPath,
-            };
-
-            if (localMeta) {
-              if (localMeta.coverUrl) {
-                updatePayload.coverUrl = localMeta.coverUrl;
-              }
-              if (
-                localMeta.description &&
-                (!targetBook.description ||
-                  targetBook.description.startsWith("No metadata found") ||
-                  targetBook.description.startsWith("Point this book") ||
-                  targetBook.description.length < 100)
-              ) {
-                updatePayload.description = localMeta.description;
-              }
-              if (localMeta.duration && targetBook.type === "audiobook") {
-                updatePayload.duration = localMeta.duration;
-              }
-            }
-
-            await fetch(`/api/books/${targetBook.id}`, {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(updatePayload),
-            });
-          }
-        } catch (dbErr) {
-          console.error(
-            "Failed to register organized physical file handle inside IndexedDB:",
-            dbErr,
-          );
-        }
-
-        // Log action back to server log system persistently!
-        try {
-          await fetch("/api/logs", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              level: "success",
-              source: "organizer",
-              message: `Organized File: Moved and renamed [${file.name}] → destination [${result.destinationPath}] under Library.`,
-            }),
-          });
-        } catch (le) {
-          console.warn("Logging feedback error:", le);
-        }
-
-        // Remove organized file from local view list
-        setWatchFolderFiles((prev) => prev.filter((f) => f.path !== file.path));
-
-        // Refresh triggers to let parent view update
-        if (onReloadLibrary) onReloadLibrary();
-        if (onReloadLogs) onReloadLogs();
-      } else {
-        alert(`Organization operation failed: ${result.message}`);
-      }
-    } catch (e: any) {
-      console.error("File sorting failed:", e);
-      alert(`Critical write failure: ${e.message || String(e)}`);
-    } finally {
-      setOrganizingFilesMap((prev) => ({ ...prev, [file.path]: false }));
-      setTimeout(() => setOrganizerStatusMessage(null), 6000);
-    }
-  };
-
-  // Compute aggregate stats safely
+  // Automate pulling of completed downloads on the client directly to browser staging folder
   const totalSpeedBytes = tasks.reduce((acc, t) => {
     if (t.status !== "downloading") return acc;
     const match = t.downloadSpeed.match(/([\d.]+)\s*MB\/s/);
@@ -1144,7 +1229,7 @@ export default function WebtorDownloads({
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex gap-2 items-center">
             {watchDirHandle && (
               <button
                 type="button"
@@ -1269,41 +1354,30 @@ export default function WebtorDownloads({
             </div>
 
             <div className="divide-y divide-neutral-950 border border-neutral-900 rounded-xl overflow-hidden bg-[#141414]">
-              {watchFolderFiles.map((file) => {
-                // Determine mapped book
-                const currentMappedId =
-                  manualMappedBookIds[file.path] || file.autoMappedBook?.id;
-                const activeMappedBook = books.find(
-                  (b) => b.id === currentMappedId,
-                );
-                const isAuto =
-                  !manualMappedBookIds[file.path] && file.autoMappedBook;
-
-                // Keep only books of same type for mapping
-                const filteredMappingBooks = books.filter(
-                  (b) => b.type === file.type,
-                );
-
-                const localMeta = extractedMetadataMap[file.path];
-                const isParsing = parsingMetadataMap[file.path];
+              {watchFolderGroups.map((group, idx) => {
+                const totalFiles =
+                  group.ebookFiles.length +
+                  group.audioFiles.length +
+                  group.coverFiles.length;
+                const isOrganizing = organizingFilesMap[group.title];
 
                 return (
                   <div
-                    key={file.path}
+                    key={`${group.title}-${idx}`}
                     className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between p-4 gap-4 bg-[#141414] hover:bg-[#161616] transition text-left"
                   >
                     {/* Visual details column */}
                     <div className="flex items-center gap-3 min-w-0 flex-1">
-                      {localMeta?.coverUrl ? (
+                      {group.bestCoverUrl ? (
                         <img
-                          src={localMeta.coverUrl}
+                          src={group.bestCoverUrl}
                           alt="Cover thumbnail"
                           referrerPolicy="no-referrer"
                           className="w-10 h-14 object-cover rounded shadow-lg border border-neutral-800 shrink-0"
                         />
                       ) : (
                         <div className="p-2 bg-neutral-950 border border-neutral-900 rounded-lg shrink-0">
-                          {file.type === "audiobook" ? (
+                          {group.audioFiles.length > 0 && !group.bestEbook ? (
                             <FileAudio className="w-5 h-5 text-amber-500" />
                           ) : (
                             <FileText className="w-5 h-5 text-blue-400" />
@@ -1313,113 +1387,55 @@ export default function WebtorDownloads({
 
                       <div className="truncate text-left min-w-0 flex-1">
                         <span
-                          className="text-xs font-bold text-neutral-200 block truncate"
-                          title={file.name}
+                          className="text-sm font-bold text-neutral-200 block truncate"
+                          title={group.title}
                         >
-                          {file.name}
+                          {group.title}
                         </span>
 
-                        {isParsing && (
-                          <div className="text-[10px] text-amber-500 flex items-center gap-1 mt-0.5 font-mono animate-pulse">
-                            <RefreshCw className="w-3 h-3 animate-spin" />
-                            Reading inner metadata...
-                          </div>
-                        )}
+                        <div className="text-[11px] text-neutral-400 mt-0.5 truncate">
+                          {group.author}
+                        </div>
 
-                        {!isParsing && localMeta && (
-                          <div className="text-[10px] text-emerald-400 mt-1 bg-emerald-500/10 border border-emerald-500/15 rounded px-2 py-0.5 inline-block max-w-full truncate font-sans">
-                            ✨ Inner title:{" "}
-                            <strong className="font-bold text-emerald-300">
-                              {localMeta.title || "Untitled"}
-                            </strong>{" "}
-                            {localMeta.author && `by ${localMeta.author}`}{" "}
-                            {localMeta.duration &&
-                              `(${Math.round(localMeta.duration / 60)} min)`}
-                          </div>
-                        )}
-
-                        <div className="flex items-center gap-2 mt-1">
+                        <div className="flex flex-wrap items-center gap-2 mt-1">
                           <span className="text-[10px] font-mono text-neutral-500 bg-neutral-950 px-1.5 py-0.5 rounded border border-neutral-900">
-                            {file.size}
+                            {totalFiles} file{totalFiles !== 1 ? "s" : ""}
                           </span>
                           <span className="text-[10px] text-neutral-500 font-sans truncate block max-w-[200px] sm:max-w-md">
-                            Path: {file.path}
+                            Source: {group.dirPath}
                           </span>
+                          {group.bestEbook && (
+                            <span className="text-[10px] text-blue-400 font-mono bg-blue-400/10 px-1.5 py-0.5 rounded">
+                              Best: {group.bestEbook.extension.toUpperCase()}
+                            </span>
+                          )}
+                          {group.audioFiles.length > 0 && (
+                            <span className="text-[10px] text-amber-400 font-mono bg-amber-400/10 px-1.5 py-0.5 rounded">
+                              {group.audioFiles.length} Audio Track
+                              {group.audioFiles.length !== 1 ? "s" : ""}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
 
                     {/* Selector and Connection Column */}
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
-                      {/* Mapping Indicator or Selector */}
-                      <div className="space-y-1 text-left w-full sm:w-56">
-                        <span className="text-[10px] font-mono text-neutral-500 uppercase block">
-                          Library Target Assignment
-                        </span>
-
-                        {/* Dynamic manual connector dropdown */}
-                        <div className="relative">
-                          <select
-                            value={currentMappedId || ""}
-                            onChange={(e) => {
-                              const targetId = e.target.value;
-                              setManualMappedBookIds((prev) => ({
-                                ...prev,
-                                [file.path]: targetId,
-                              }));
-                            }}
-                            className="w-full bg-[#1e1e1e] border border-[#2d2d2d] rounded-lg p-1.5 pr-6 focus:outline-none focus:border-amber-500 text-neutral-300 text-[11px] font-medium appearance-none cursor-pointer"
-                          >
-                            <option value="">
-                              -- Let's manual map to Book --
-                            </option>
-                            {filteredMappingBooks.map((b) => (
-                              <option key={b.id} value={b.id}>
-                                {b.title} ({b.author})
-                              </option>
-                            ))}
-                          </select>
-                          <ChevronDown className="w-3 h-3 text-neutral-400 absolute right-2 top-2.5 pointer-events-none" />
-                        </div>
-
-                        {/* Banner status helper */}
-                        {activeMappedBook ? (
-                          <div className="flex items-center gap-1.5 pt-0.5 text-[10px]">
-                            {isAuto ? (
-                              <span className="text-emerald-500 font-bold uppercase tracking-wide flex items-center gap-1 text-[9px]">
-                                <Sparkles className="w-2.5 h-2.5" /> Auto-Mapped
-                                Match
-                              </span>
-                            ) : (
-                              <span className="text-amber-500 font-bold uppercase tracking-wide text-[9px]">
-                                Custom Overridden
-                              </span>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-[9px] text-red-400 font-semibold block pt-0.5">
-                            ⚠️ Unassigned. Choose a library book to import file.
-                          </span>
-                        )}
-                      </div>
-
                       {/* Organizer Trigger Buttons */}
                       <div className="shrink-0 pt-0 sm:pt-4 w-full sm:w-auto text-right flex items-center">
                         <button
                           type="button"
-                          onClick={() => handleOrganizeSingle(file)}
-                          disabled={
-                            !activeMappedBook || organizingFilesMap[file.path]
-                          }
+                          onClick={() => handleOrganizeGroup(group)}
+                          disabled={isOrganizing}
                           className="w-full sm:w-auto bg-amber-500 text-black disabled:bg-neutral-900 disabled:text-neutral-500 px-4 py-2 rounded-lg text-xs font-bold uppercase hover:bg-amber-400 transition cursor-pointer flex items-center justify-center gap-1.5"
                         >
-                          {organizingFilesMap[file.path] ? (
+                          {isOrganizing ? (
                             <>
                               <RefreshCw className="w-3 h-3 animate-spin shrink-0" />
-                              Moving...
+                              Importing Group...
                             </>
                           ) : (
-                            "Organize & Move"
+                            "Import to Library"
                           )}
                         </button>
                       </div>

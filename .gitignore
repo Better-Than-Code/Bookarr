@@ -6,3 +6,12 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Cached models and media assets
+public/models/
+data/bookarr/download/
+data/models/
+*.mp3
+*.epub
+*.m4b
+*.pdf

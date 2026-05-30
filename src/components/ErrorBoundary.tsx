@@ -28,6 +28,17 @@ export class ErrorBoundary extends React.Component<any, any> {
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error("Uncaught error:", error, errorInfo);
+    try {
+      fetch("/api/aistudio-logs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "CLIENT_REACT_ERROR",
+          message: error.toString(),
+          args: [errorInfo.componentStack],
+        }),
+      });
+    } catch (e) {}
   }
 
   public render() {

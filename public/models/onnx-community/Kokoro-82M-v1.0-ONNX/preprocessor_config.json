@@ -1,6 +1,0 @@
-{
-  "feature_extractor_type": "SequenceFeatureExtractor",
-  "padding_value": 0.0,
-  "do_normalize": false,
-  "return_attention_mask": false
-}

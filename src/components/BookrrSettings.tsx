@@ -426,6 +426,8 @@ export default function BookrrSettings({
   >([]);
   const [hasScannedLibrary, setHasScannedLibrary] = useState(false);
   const [isFixingLibrary, setIsFixingLibrary] = useState(false);
+  const [isCleaningLibrary, setIsCleaningLibrary] = useState(false);
+  const [cleanupResults, setCleanupResults] = useState<Book[] | null>(null);
   const [fixProgress, setFixProgress] = useState(0);
 
   const isInIframe =
@@ -856,6 +858,52 @@ export default function BookrrSettings({
     handleAnalyzeLibraryStructure();
   };
 
+  const handleScanLibraryCleanup = async () => {
+    setIsCleaningLibrary(true);
+    try {
+      const res = await fetch("/api/library/cleanup");
+      if (res.ok) {
+        const data = await res.json();
+        setCleanupResults(data.missingEntries || []);
+        if (data.missingEntries.length > 0) {
+          showNotification(
+            "info",
+            `Found ${data.missingEntries.length} invalid library entries.`,
+          );
+        } else {
+          showNotification("success", `Library is pristine. No missing files.`);
+        }
+      }
+    } catch (e) {
+      console.error("Cleanup scan failed", e);
+      showNotification("error", "Failed to check library cleanup status");
+    } finally {
+      setIsCleaningLibrary(false);
+    }
+  };
+
+  const handlePerformDelete = async (bookId: string, deleteFiles: boolean) => {
+    try {
+      const res = await fetch(
+        `/api/books/${bookId}?deleteFiles=${deleteFiles ? "true" : "false"}`,
+        {
+          method: "DELETE",
+        },
+      );
+      if (res.ok) {
+        showNotification(
+          "success",
+          deleteFiles ? "Deleted entry and files." : "Deleted database entry.",
+        );
+        setCleanupResults((prev) =>
+          prev ? prev.filter((b) => b.id !== bookId) : null,
+        );
+      }
+    } catch (e) {
+      showNotification("error", "Failed deleting entry");
+    }
+  };
+
   useEffect(() => {
     setWebtorEnabled(config.webtorEnabled);
     setLocalDownloadPath(config.localDownloadPath);
@@ -938,6 +986,7 @@ export default function BookrrSettings({
 
     onSaveConfig({
       config: {
+        ...config,
         webtorEnabled,
         localDownloadPath,
       },
@@ -1070,6 +1119,7 @@ export default function BookrrSettings({
     e.preventDefault();
     onSaveConfig({
       config: {
+        ...config,
         webtorEnabled,
         localDownloadPath,
       },
@@ -2107,6 +2157,104 @@ export default function BookrrSettings({
                                   >
                                     Expected: {d.expectedPath}
                                   </p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              <div className="bg-[#111] border border-[#222] rounded-2xl p-6 space-y-4">
+                <div className="flex items-center gap-3 pb-4 border-b border-[#222]">
+                  <Trash2 className="w-5 h-5 text-red-500" />
+                  <div>
+                    <h3 className="font-sans font-bold text-sm text-neutral-100">
+                      Library Data Cleanup
+                    </h3>
+                    <p className="text-[11px] text-neutral-400">
+                      Cross-references your database entries against the actual
+                      filesystem to identify orphaned records.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-4 text-left">
+                  <button
+                    onClick={handleScanLibraryCleanup}
+                    disabled={isCleaningLibrary}
+                    className="bg-[#1a1a1a] border border-[#333] hover:border-red-500/50 text-neutral-300 hover:text-red-400 px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2 cursor-pointer transition disabled:opacity-50"
+                  >
+                    <RefreshCw
+                      className={`w-4 h-4 ${isCleaningLibrary ? "animate-spin" : ""}`}
+                    />
+                    {isCleaningLibrary
+                      ? "Scanning Database..."
+                      : "Find Missing Files"}
+                  </button>
+
+                  {cleanupResults !== null && (
+                    <div className="space-y-3 animate-in fade-in slide-in-from-top-4 duration-300">
+                      {cleanupResults.length === 0 ? (
+                        <div className="bg-emerald-500/10 border border-emerald-500/20 p-4 rounded-xl flex items-start gap-3">
+                          <CheckCircle2 className="w-5 h-5 text-emerald-500 mt-0.5 shrink-0" />
+                          <div>
+                            <h4 className="text-xs font-bold text-emerald-500">
+                              Clean Registry
+                            </h4>
+                            <p className="text-[11px] text-neutral-400 leading-relaxed mt-1">
+                              All database entries point to valid files. No
+                              cleanup needed.
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-xl">
+                          <div className="flex items-center justify-between mb-4">
+                            <h4 className="text-xs font-bold text-red-500 flex items-center gap-2">
+                              <AlertTriangle className="w-4 h-4" />
+                              Found {cleanupResults.length} orphaned entries
+                            </h4>
+                          </div>
+                          <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                            {cleanupResults.map((b) => (
+                              <div
+                                key={b.id}
+                                className="bg-[#1a1a1a] border border-red-500/10 rounded-lg p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                              >
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-xs font-bold text-neutral-200 truncate">
+                                    {b.title}
+                                  </p>
+                                  <p
+                                    className="text-[10px] text-neutral-500 truncate mt-0.5"
+                                    title={b.filePath || b.fileUrl}
+                                  >
+                                    Expected at: {b.filePath || b.fileUrl}
+                                  </p>
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <button
+                                    onClick={() =>
+                                      handlePerformDelete(b.id, false)
+                                    }
+                                    className="px-3 py-1.5 rounded bg-neutral-800 hover:bg-neutral-700 text-[10px] text-neutral-300 transition"
+                                  >
+                                    Delete Entry Info
+                                  </button>
+                                  <button
+                                    onClick={() =>
+                                      handlePerformDelete(b.id, true)
+                                    }
+                                    className="px-3 py-1.5 rounded bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 text-[10px] transition"
+                                  >
+                                    Delete Files & Entry
+                                  </button>
                                 </div>
                               </div>
                             ))}

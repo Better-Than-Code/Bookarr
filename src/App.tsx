@@ -33,6 +33,7 @@ import {
   getOfflineFile,
   OfflineFile,
   saveFileHandle,
+  ensureFilePermission,
 } from "./services/LocalFileService";
 import {
   sanitizePathName,
@@ -483,10 +484,12 @@ export default function App() {
           {activeTab === "library" && (
             <LibraryDashboard
               books={books}
-              onPlayAudiobook={(b) => {
+              onPlayAudiobook={async (b) => {
+                await ensureFilePermission(b.id);
                 setActiveAudiobook(b);
               }}
-              onReadEbook={(b) => {
+              onReadEbook={async (b) => {
+                await ensureFilePermission(b.id);
                 setActiveEbook(b);
               }}
               onManualImport={async () => {
