@@ -1488,6 +1488,7 @@ setInterval(async () => {
               ...fileMetadata,
               id: `book-${Date.now()}`,
               isDownloaded: false,
+              status: "staged",
               filePath: foundPath || task.enrichedBook.filePath || "",
               fileUrl: foundUrl || task.enrichedBook.fileUrl || "",
               chapters:
@@ -1515,6 +1516,7 @@ setInterval(async () => {
               progress: 0,
               currentTime: 0,
               isDownloaded: false,
+              status: "staged",
               size: task.size,
               addedAt: new Date().toISOString(),
               chapters:
@@ -2054,6 +2056,7 @@ app.post("/api/scan-library", async (req, res) => {
               fileUrl: `/api/files/${encodeURIComponent(item)}`,
               filePath: fullPath,
               isDownloaded: true,
+              status: "organized",
               addedAt: new Date().toISOString(),
               duration: undefined,
               chapters:
@@ -2120,6 +2123,7 @@ app.post("/api/scan-library", async (req, res) => {
         fileUrl: `/api/files/${encodeURIComponent(firstFile)}`,
         filePath: audioFiles.length > 1 ? dir : fullPath,
         isDownloaded: true,
+        status: "organized",
         addedAt: new Date().toISOString(),
         duration: fileMeta.duration || 0,
         chapters: audioFiles.length > 1 ? mappedChapters : undefined,
@@ -2242,8 +2246,9 @@ app.post("/api/books", (req, res) => {
   const book: Book = {
     id: `book-${Date.now()}`,
     ...req.body,
-    progress: 0,
-    currentTime: 0,
+    progress: req.body.progress || 0,
+    currentTime: req.body.currentTime || 0,
+    status: req.body.status || "wanted",
     addedAt: new Date().toISOString(),
   };
   db.books.push(book);
@@ -2290,7 +2295,22 @@ app.put("/api/books/:id", (req, res) => {
   const db = loadDB();
   const index = db.books.findIndex((b: Book) => b.id === req.params.id);
   if (index !== -1) {
-    db.books[index] = { ...db.books[index], ...req.body };
+    const oldBook = db.books[index];
+    
+    // If the client is marking this as locally organized/downloaded 
+    // and specifying a new local filePath, clean up the server's staging file
+    if (req.body.isDownloaded === true && req.body.filePath && oldBook.filePath && oldBook.filePath !== req.body.filePath) {
+      if (fs.existsSync(oldBook.filePath)) {
+        try {
+          fs.rmSync(oldBook.filePath, { recursive: true, force: true });
+          console.log(`[STAGING CLEANUP] Removed server staging file: ${oldBook.filePath}`);
+        } catch (e) {
+          console.error(`[STAGING CLEANUP] Failed to remove ${oldBook.filePath}:`, e);
+        }
+      }
+    }
+    
+    db.books[index] = { ...oldBook, ...req.body, status: req.body.status || oldBook.status || (req.body.isDownloaded ? "organized" : "staged") };
     saveDB(db);
     return res.json(db.books[index]);
   }

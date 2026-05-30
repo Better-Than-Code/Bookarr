@@ -35,6 +35,7 @@ export interface Book {
   currentPage?: number; // for ebooks
   chapters?: EbookChapter[] | AudiobookChapter[];
   isDownloaded: boolean;
+  status?: "wanted" | "downloading" | "staged" | "organized"; // ARR-like status
   size?: string;
   fileUrl?: string; // local preview path or stream
   filePath?: string; // actual filesystem path

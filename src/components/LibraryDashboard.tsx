@@ -41,7 +41,7 @@ import {
   saveFileHandle,
   ensureFilePermission,
 } from "../services/LocalFileService";
-import { autoRelinkLibrary } from "../services/LocalOrganizerService";
+import { autoRelinkLibrary, batchOrganizeLocalBooks } from "../services/LocalOrganizerService";
 
 interface LibraryDashboardProps {
   books: Book[];
@@ -79,6 +79,11 @@ export default function LibraryDashboard({
   );
   const [showImportForm, setShowImportForm] = useState(false);
   const [bookToDelete, setBookToDelete] = useState<Book | null>(null);
+
+  // Batch Selection State
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [selectedBooks, setSelectedBooks] = useState<Set<string>>(new Set());
+  const [batchOrganizingStatus, setBatchOrganizingStatus] = useState<string | null>(null);
 
   // Readarr Online book/author Search states
   const [addMode, setAddMode] = useState<"online" | "manual">("online");
@@ -584,6 +589,43 @@ export default function LibraryDashboard({
     }
   };
 
+  const handleBatchOrganize = async () => {
+    if (selectedBooks.size === 0) return;
+    
+    // Convert selected IDs to actual books
+    const booksToOrganize = books.filter(b => selectedBooks.has(b.id));
+
+    setBatchOrganizingStatus("Starting batch organization...");
+    
+    try {
+      const { success, failed, errors } = await batchOrganizeLocalBooks(
+        booksToOrganize,
+        getDirectoryHandle,
+        verifyDirectoryPermission,
+        saveOfflineFile,
+        saveFileHandle,
+        (progress, total, message) => {
+          setBatchOrganizingStatus(message);
+        }
+      );
+      
+      let finalMessage = `Batch Organization Completed.\nSuccessfully organized: ${success}`;
+      if (failed > 0) {
+        finalMessage += `\nFailed: ${failed}\n\nErrors:\n${errors.join('\n')}`;
+      }
+      
+      alert(finalMessage);
+    } catch (err: any) {
+      alert("Batch organization encountered a critical error: " + (err.message || err));
+    } finally {
+      setBatchOrganizingStatus(null);
+      setSelectedBooks(new Set());
+      setIsSelectionMode(false);
+      onSyncLibrary();
+      await refreshOfflineBooks();
+    }
+  };
+
   // Inner BookCard component for clean rendering
   const renderBookItem = (book: Book) => {
     const isAudio = book.type === "audiobook";
@@ -594,13 +636,35 @@ export default function LibraryDashboard({
       <div key={book.id} className="group flex flex-col relative w-full mb-4">
         {/* Book Cover Container */}
         <div
-          onClick={() => setSelectedBookDetails(book)}
+          onClick={(e) => {
+            if (isSelectionMode) {
+              e.preventDefault();
+              e.stopPropagation();
+              const newSelected = new Set(selectedBooks);
+              if (newSelected.has(book.id)) {
+                newSelected.delete(book.id);
+              } else {
+                newSelected.add(book.id);
+              }
+              setSelectedBooks(newSelected);
+              return;
+            }
+            setSelectedBookDetails(book);
+          }}
           className={`relative w-full aspect-[2/3] rounded-lg overflow-hidden shadow-xl shadow-black/40 border transition-all duration-300 cursor-pointer ${
             !isAvailable
               ? "border-dashed border-amber-600/60 hover:border-amber-400 hover:scale-102 filter grayscale-[15%] group-hover:grayscale-0"
               : "border-neutral-800 group-hover:border-amber-500/80 group-hover:scale-105"
-          }`}
+          } ${isSelectionMode && selectedBooks.has(book.id) ? "ring-2 ring-amber-500 border-amber-500 shadow-amber-500/50" : ""}`}
         >
+          {isSelectionMode && (
+            <div className="absolute top-2 right-2 z-20 pointer-events-none">
+              <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${selectedBooks.has(book.id) ? 'bg-amber-500 border-amber-500 text-black' : 'bg-black/50 border-neutral-400'}`}>
+                {selectedBooks.has(book.id) && <Check className="w-3.5 h-3.5" />}
+              </div>
+            </div>
+          )}
+
           <img
             src={book.coverUrl}
             alt={book.title}
@@ -608,78 +672,89 @@ export default function LibraryDashboard({
           />
 
           {/* Play/Read hover action overlay */}
-          <div className="absolute inset-0 bg-black/75 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center transition-all duration-200">
-            {!isAvailable ? (
-              <div className="flex flex-col items-center gap-2 p-3 text-center">
+          {!isSelectionMode && (
+            <div className="absolute inset-0 bg-black/75 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center transition-all duration-200">
+              {!isAvailable ? (
+                <div className="flex flex-col items-center gap-2 p-3 text-center">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedInspectBook(book);
+                    }}
+                    className="w-12 h-12 bg-amber-500/90 rounded-full flex items-center justify-center text-black hover:scale-110 cursor-pointer shadow shadow-amber-500/20"
+                    title="Configure Book/Find File"
+                  >
+                    <Search className="w-5 h-5" />
+                  </button>
+                  <span className="text-[10px] font-mono font-bold text-amber-400">
+                    Search Or Assign
+                  </span>
+                </div>
+              ) : isAudio ? (
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    setSelectedInspectBook(book);
+                    onPlayAudiobook(book);
                   }}
-                  className="w-12 h-12 bg-amber-500/90 rounded-full flex items-center justify-center text-black hover:scale-110 cursor-pointer shadow shadow-amber-500/20"
-                  title="Configure Book/Find File"
+                  className="w-12 h-12 bg-amber-500 rounded-full flex items-center justify-center text-black hover:scale-110 cursor-pointer shadow shadow-amber-500/20"
+                  title="Listen now"
                 >
-                  <Search className="w-5 h-5" />
+                  <Play className="w-5 h-5 fill-current ml-0.5" />
                 </button>
-                <span className="text-[10px] font-mono font-bold text-amber-400">
-                  Search Or Assign
-                </span>
-              </div>
-            ) : isAudio ? (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onPlayAudiobook(book);
-                }}
-                className="w-12 h-12 bg-amber-500 rounded-full flex items-center justify-center text-black hover:scale-110 cursor-pointer shadow shadow-amber-500/20"
-                title="Listen now"
-              >
-                <Play className="w-5 h-5 fill-current ml-0.5" />
-              </button>
-            ) : (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onReadEbook(book);
-                }}
-                className="w-12 h-12 bg-amber-500 rounded-full flex items-center justify-center text-black hover:scale-110 cursor-pointer shadow shadow-amber-500/20"
-                title="Read now"
-              >
-                <BookOpen className="w-5 h-5" />
-              </button>
-            )}
+              ) : (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onReadEbook(book);
+                  }}
+                  className="w-12 h-12 bg-amber-500 rounded-full flex items-center justify-center text-black hover:scale-110 cursor-pointer shadow shadow-amber-500/20"
+                  title="Read now"
+                >
+                  <BookOpen className="w-5 h-5" />
+                </button>
+              )}
 
-            {isAvailable && (book.fileUrl || hasOfflineCopy) && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleInitiateDownload(book);
-                }}
-                className="mt-4 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#111] hover:bg-[#1c1c1c] text-[10px] text-amber-400 hover:text-amber-300 font-bold border border-neutral-800 hover:border-amber-500/30 select-none transition-all active:scale-95 cursor-pointer shadow-lg"
-                title="Save copy to your computer or phone"
-              >
-                <Download className="w-3 h-3" />
-                <span>Save to Device</span>
-              </button>
-            )}
-          </div>
+              {isAvailable && (book.fileUrl || hasOfflineCopy) && book.status !== 'organized' && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (book.status === 'staged') {
+                       setSelectedBookDetails(book);
+                    } else {
+                       handleInitiateDownload(book);
+                    }
+                  }}
+                  className="mt-4 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#111] hover:bg-[#1c1c1c] text-[10px] text-amber-400 hover:text-amber-300 font-bold border border-neutral-800 hover:border-amber-500/30 select-none transition-all active:scale-95 cursor-pointer shadow-lg"
+                  title={book.status === 'staged' ? "Organize file to library" : "Save copy to your computer or phone"}
+                >
+                  {book.status === 'staged' ? <FolderOpen className="w-3 h-3" /> : <Download className="w-3 h-3" />}
+                  <span>{book.status === 'staged' ? 'Organize' : 'Save to Device'}</span>
+                </button>
+              )}
+            </div>
+          )}
 
           {/* Format Indicator Tag corner */}
           <div className="absolute top-2 left-2 flex flex-col gap-1">
             <div className="bg-black/85 backdrop-blur-md text-[9px] font-mono font-semibold px-1.5 py-0.5 rounded text-neutral-300">
               {isAudio ? "AUDIO" : "EPUB"}
             </div>
-            {!isAvailable && (
+            {!isAvailable && (!book.status || book.status === "wanted") && (
               <div className="bg-amber-600/90 text-white text-[8px] font-mono font-extrabold px-1.5 py-0.5 rounded shadow-sm">
                 WANTED
               </div>
             )}
-            {isAvailable && hasOfflineCopy && (
-              <div className="bg-amber-500 text-black text-[8px] font-mono font-extrabold px-1.5 py-0.5 rounded shadow-sm">
-                OFFLINE CACHED
+            {book.status === "staged" && (
+              <div className="bg-indigo-500 text-white text-[8px] font-mono font-extrabold px-1.5 py-0.5 rounded shadow-sm">
+                STAGED
               </div>
             )}
-            {isAvailable && !hasOfflineCopy && book.fileUrl && (
+            {(book.status === "organized" || (isAvailable && hasOfflineCopy && book.status !== "staged")) && (
+              <div className="bg-amber-500 text-black text-[8px] font-mono font-extrabold px-1.5 py-0.5 rounded shadow-sm">
+                ORGANIZED
+              </div>
+            )}
+            {book.status === "organized" && !hasOfflineCopy && book.fileUrl && (
               <div className="bg-emerald-500/90 text-white text-[8px] font-mono font-bold px-1.5 py-0.5 rounded shadow-sm">
                 NATIVE
               </div>
@@ -805,6 +880,36 @@ export default function LibraryDashboard({
 
         {/* Sync & Manual Import Buttons */}
         <div className="flex flex-wrap items-center gap-2.5">
+          {isSelectionMode ? (
+            <>
+              <button
+                onClick={handleBatchOrganize}
+                disabled={selectedBooks.size === 0}
+                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold transition cursor-pointer disabled:opacity-50"
+              >
+                <FolderOpen className="w-3.5 h-3.5" />
+                <span>Batch Organize ({selectedBooks.size})</span>
+              </button>
+              <button
+                onClick={() => {
+                  setIsSelectionMode(false);
+                  setSelectedBooks(new Set());
+                }}
+                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl border border-neutral-700 bg-neutral-800 hover:bg-neutral-700 text-xs font-semibold text-white transition cursor-pointer"
+              >
+                Cancel
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => setIsSelectionMode(true)}
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl border border-neutral-700 bg-neutral-800 hover:bg-neutral-700 text-xs font-semibold text-neutral-300 hover:text-white transition cursor-pointer"
+            >
+              <Check className="w-3.5 h-3.5" />
+              <span>Select</span>
+            </button>
+          )}
+
           <button
             onClick={onSyncLibrary}
             disabled={isSyncing}
@@ -2083,6 +2188,18 @@ export default function LibraryDashboard({
             </div>
           );
         })()}
+
+      {batchOrganizingStatus && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-[#121212] border border-[#222] p-8 flex flex-col items-center justify-center max-w-sm w-full rounded-2xl shadow-[0_0_80px_rgba(245,158,11,0.15)] text-center">
+            <RefreshCw className="w-12 h-12 text-amber-500 animate-spin mb-4" />
+            <h4 className="font-sans font-bold text-lg mb-2 tracking-tight text-white">Batch Organizing</h4>
+            <p className="text-sm font-mono text-neutral-400 break-words leading-relaxed w-full">
+              {batchOrganizingStatus}
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

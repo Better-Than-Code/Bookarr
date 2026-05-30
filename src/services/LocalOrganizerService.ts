@@ -17,6 +17,91 @@ export interface WatchFolderFile {
   originDirHandle?: FileSystemDirectoryHandle;
 }
 
+export async function batchOrganizeLocalBooks(
+  books: Book[],
+  getDirectoryHandle: (dirName: "ebooks" | "audiobooks") => Promise<FileSystemDirectoryHandle | null>,
+  verifyDirectoryPermission: (handle: FileSystemDirectoryHandle, read: boolean, write: boolean) => Promise<boolean>,
+  saveOfflineFile: (bookId: string, name: string, blob: Blob, filePath?: string) => Promise<void>,
+  saveFileHandle: (bookId: string, handle: FileSystemFileHandle, originalPath?: string) => Promise<void>,
+  onProgress?: (progress: number, total: number, message: string) => void
+): Promise<{ success: number; failed: number; errors: string[] }> {
+  let success = 0;
+  let failed = 0;
+  const errors: string[] = [];
+
+  for (let i = 0; i < books.length; i++) {
+    const book = books[i];
+    try {
+      if (onProgress) {
+        onProgress(i, books.length, `Organizing "${book.title}"... (${i + 1}/${books.length})`);
+      }
+
+      const destType = book.type === "audiobook" ? "audiobooks" : "ebooks";
+      const handle = await getDirectoryHandle(destType);
+
+      if (!handle) {
+        throw new Error(`Organized destination directory for ${book.type} is unconfigured.`);
+      }
+
+      const hasPerm = await verifyDirectoryPermission(handle, true, true);
+      if (!hasPerm) {
+        throw new Error(`Missing write permission for ${destType} folder.`);
+      }
+
+      if (!book.fileUrl) {
+        throw new Error("File URL is not available on the server. Make sure download has finished.");
+      }
+
+      // Fetch the file from server
+      const fileRes = await fetch(book.fileUrl);
+      if (!fileRes.ok) {
+        throw new Error(`Server returned HTTP ${fileRes.status}`);
+      }
+      const blob = await fileRes.blob();
+
+      const authorFolder = sanitizePathName(book.author);
+      const bookFolder = sanitizePathName(book.title);
+      const ext = book.filePath ? book.filePath.split(".").pop() || "epub" : "epub";
+      const finalFileName = `${bookFolder} - ${authorFolder}.${ext}`;
+
+      // Create folders as needed
+      const authorDirHandle = await handle.getDirectoryHandle(authorFolder, { create: true });
+      const bookDirHandle = await authorDirHandle.getDirectoryHandle(bookFolder, { create: true });
+
+      // Write file contents
+      const fileHandle = await bookDirHandle.getFileHandle(finalFileName, { create: true });
+      const writable = await fileHandle.createWritable();
+      await writable.write(blob);
+      await writable.close();
+
+      // Save offline file and handle locally
+      const relativeDest = `${book.type === "audiobook" ? "Audiobooks" : "Ebooks"}/${authorFolder}/${bookFolder}/${finalFileName}`;
+      await saveOfflineFile(book.id, finalFileName, blob, relativeDest);
+      await saveFileHandle(book.id, fileHandle, relativeDest);
+
+      // Sync status with server
+      const updateRes = await fetch(`/api/books/${book.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isDownloaded: true, filePath: relativeDest }),
+      });
+
+      if (!updateRes.ok) {
+        const errText = await updateRes.text();
+        throw new Error(`Server failed to update book status: ${errText}`);
+      }
+
+      success++;
+    } catch (e: any) {
+      console.error(`Failed to organize "${book.title}":`, e);
+      errors.push(`"${book.title}": ${e.message || String(e)}`);
+      failed++;
+    }
+  }
+
+  return { success, failed, errors };
+}
+
 // Ensure folder names don't contain illegal characters for Windows/macOS/Linux filesystems
 export function sanitizePathName(name: string): string {
   if (!name) return "Unknown";
