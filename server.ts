@@ -334,9 +334,9 @@ const restartTorrent = (task: TorrentTask): any => {
 
 const app = express();
 app.use((req, res, next) => {
-  // Required for SharedArrayBuffer / WASM Multi-threading
-  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
-  res.setHeader('Cross-Origin-Embedder-Policy', 'credentialless');
+  // Commented out COOP/COEP as they prevent the iframe from loading inside the AI Studio preview environment
+  // res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+  // res.setHeader('Cross-Origin-Embedder-Policy', 'credentialless');
   try { fs.appendFileSync('proxy.log', '[EXPRESS URL LOG] ' + req.method + ' ' + req.url + '\n'); } catch(e) {}
   next();
 });
