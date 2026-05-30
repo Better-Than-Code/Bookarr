@@ -17,10 +17,7 @@
     <!-- Service Worker Registration at early stage -->
     <script>
       if ('serviceWorker' in navigator) {
-        // Build base path dynamically based on current location to support deployment under folders (like GitHub Pages)
-        const base = window.location.pathname.endsWith('/') ? window.location.pathname : window.location.pathname + '/';
-        const swUrl = base + 'pwabuilder-sw.js';
-        navigator.serviceWorker.register(swUrl, { scope: base })
+        navigator.serviceWorker.register('./pwabuilder-sw.js', { scope: './' })
           .then(function(reg) {
             console.log('Bookrr Service Worker registered successfully with scope:', reg.scope);
           })

@@ -1,12 +1,12 @@
 const CACHE_NAME = 'bookrr-cache-v1';
 const ASSETS_TO_CACHE = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-  '/icon.svg',
-  '/icon-maskable.svg',
-  '/icon-192.png',
-  '/icon-512.png'
+  './',
+  './index.html',
+  './manifest.json',
+  './icon.svg',
+  './icon-maskable.svg',
+  './icon-192.png',
+  './icon-512.png'
 ];
 
 self.addEventListener('install', (event) => {
@@ -74,7 +74,7 @@ self.addEventListener('fetch', (event) => {
       }).catch(async () => {
         // Offline fallback to main app interface
         const cache = await caches.open(CACHE_NAME);
-        const cachedFallback = await cache.match('/index.html');
+        const cachedFallback = await cache.match('./index.html');
         return cachedFallback || new Response('Offline mode');
       });
     })
