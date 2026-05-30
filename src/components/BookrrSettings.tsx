@@ -823,7 +823,6 @@ const currentSavedBackend = localStorage.getItem('bookrr_tts_backend') || 'auto'
             </div>
           </form>
 
-
           {/* Neural AI Settings */}
           <div className="bg-[#111] border border-[#222] rounded-2xl p-6 space-y-6">
             <div className="flex items-center gap-3 pb-4 border-b border-[#222]">

@@ -14,7 +14,6 @@ import AudiobookPlayer from './components/AudiobookPlayer';
 import EbookReader from './components/EbookReader';
 import ReadAloudMiniPlayer from './components/ReadAloudMiniPlayer';
 import { Book, TorrentTask, TorrentSearchResult, IndexerSettings, BookrrConfig, MessageLog, AudiobookChapter } from './types';
-
 import { 
   getOfflineBooksMap, 
   saveOfflineFile, 

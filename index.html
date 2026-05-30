@@ -3,8 +3,29 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="manifest" href="/site.webmanifest" />
     <title>Bookrr - Integrated Audiobook & Book Media Server</title>
+    <!-- PWA Meta Tags & Manifest Link -->
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <link rel="apple-touch-icon" href="/icon.svg" />
+    <meta name="theme-color" content="#6366f1" />
+    <meta name="description" content="A fully integrated book and audiobook media server, searcher, and reader suite." />
+    <!-- Apple Web App Capable -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Bookrr" />
+    <!-- Service Worker Registration at early stage -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/pwabuilder-sw.js', { scope: '/' })
+          .then(function(reg) {
+            console.log('Bookrr Service Worker registered successfully with scope:', reg.scope);
+          })
+          .catch(function(err) {
+            console.error('Bookrr Service Worker registration failed:', err);
+          });
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -14,7 +14,6 @@ import { getMetadataFromFile } from './src/services/MetadataParser.server';
 import axios from 'axios';
 import https from 'https';
 import * as cheerio from 'cheerio';
-// @ts-ignore
 import epubParser from 'epub-parser';
 import { GoogleGenAI, Type } from "@google/genai";
 import multer from 'multer';
@@ -47,9 +46,7 @@ const agent = new https.Agent({
   ciphers: 'DEFAULT'
 });
 
-// @ts-ignore
 import WebTorrent from 'webtorrent';
-// @ts-ignore
 import EPub from 'epub';
 
 const PUBLIC_TRACKERS = [
@@ -87,21 +84,21 @@ const PUBLIC_TRACKERS = [
 ];
 
 const client = new WebTorrent({
-  maxConns: 2000,          // Further increase max connections to discover more peers
+  maxConns: 120,           // Safe connection limits for Cloud Run container socket constraints
   downloadLimit: -1,       // Ensure unlimited download 
-  uploadLimit: 500000,     // Cap upload at 500kB/s to prioritize download bandwith
+  uploadLimit: 250000,     // Safe upload cap to save bandwidth and system resources
   tracker: {
     announce: PUBLIC_TRACKERS
   },
   dht: { 
-    concurrency: 128,
+    concurrency: 16,       // Moderate DHT concurrency to prevent out-of-memory or file descriptor exhaustion
     bootstrap: [
       'router.bittorrent.com:6881',
       'router.utorrent.com:6881',
       'dht.transmissionbt.com:6881',
       'dht.aelitis.com:6881'
     ]
-  },// Boost DHT searches more to quickly find peers
+  },
   lsd: true,
   webSeeds: true
 });
@@ -314,17 +311,23 @@ const restartTorrent = (task: TorrentTask): any => {
     if (currentRetries >= MAX_RETRY_ATTEMPTS) {
         console.log(`Max retries reached for ${task.name}. Marking as failed.`);
         t.status = 'failed';
+        task.status = 'failed'; // Update passed reference immediately
         saveDB(db);
         return null;
     }
 
     t.retryCount = currentRetries + 1;
+    task.retryCount = t.retryCount; // Update passed reference immediately
     saveDB(db);
 
     const existing = client.torrents.find((t: any) => t.magnetURI === task.magnetLink || t.infoHash === task.infoHash);
     if(existing) {
         console.log(`Restarting stalled torrent: ${task.name} (Attempt ${t.retryCount}/${MAX_RETRY_ATTEMPTS})`);
-        client.remove(existing);
+        try {
+            client.remove(existing);
+        } catch (e: any) {
+            console.error(`Error removing existing stalled torrent client:`, e.message || e);
+        }
     }
     return addTorrentToClient(task);
 }
@@ -334,7 +337,7 @@ app.use((req, res, next) => {
   // Required for SharedArrayBuffer / WASM Multi-threading
   res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
   res.setHeader('Cross-Origin-Embedder-Policy', 'credentialless');
-  try { require('fs').appendFileSync('proxy.log', '[EXPRESS URL LOG] ' + req.method + ' ' + req.url + '\n'); } catch(e) {}
+  try { fs.appendFileSync('proxy.log', '[EXPRESS URL LOG] ' + req.method + ' ' + req.url + '\n'); } catch(e) {}
   next();
 });
 const PORT = 3000;
@@ -358,7 +361,7 @@ async function checkTrackerHealth(url: string): Promise<{ status: 'online' | 'of
         'Cache-Control': 'no-cache',
         'Pragma': 'no-cache'
       },
-      timeout: 120000,
+      timeout: 10000,
       validateStatus: (status) => (status >= 200 && status < 400) || status === 403
     });
     if (response.status === 403) {
@@ -375,14 +378,20 @@ async function runHealthChecks() {
   const db = loadDB();
   console.log('Running periodic health checks for indexers...');
   
-  for (const indexer of db.indexers) {
-    if (!indexer.enabled) continue;
-    
-    const result = await checkTrackerHealth(indexer.url);
-    indexer.status = result.status;
-    indexer.lastChecked = new Date().toISOString();
-    indexer.error = result.error;
-  }
+  const enabledIndexers = db.indexers.filter((i: any) => i.enabled);
+  
+  await Promise.all(enabledIndexers.map(async (indexer: any) => {
+    try {
+      const result = await checkTrackerHealth(indexer.url);
+      indexer.status = result.status;
+      indexer.lastChecked = new Date().toISOString();
+      indexer.error = result.error;
+    } catch (e: any) {
+      indexer.status = 'offline';
+      indexer.lastChecked = new Date().toISOString();
+      indexer.error = e.message || 'Error checking health';
+    }
+  }));
   
   saveDB(db);
 }
@@ -390,7 +399,10 @@ async function runHealthChecks() {
 // Function to resume previously active torrents
 async function resumeActiveTorrents() {
   const db = loadDB();
-  const downloading = db.torrentTasks.filter((t: TorrentTask) => t.status === 'downloading' || t.status === 'connecting' || t.status === 'stalled');
+  const downloading = db.torrentTasks.filter((t: TorrentTask) => 
+    (t.status === 'downloading' || t.status === 'connecting' || t.status === 'stalled') &&
+    (t.retryCount || 0) < MAX_RETRY_ATTEMPTS
+  );
   
   console.log(`Resuming ${downloading.length} active torrent downloads...`);
   
@@ -452,9 +464,9 @@ async function fixStuckBooks() {
 
 // Run once on startup after a short delay
 setTimeout(async () => {
-  await runHealthChecks();
-  await fixStuckBooks();
-  await resumeActiveTorrents();
+  runHealthChecks().catch(err => console.error('Error in startup runHealthChecks:', err));
+  fixStuckBooks().catch(err => console.error('Error in startup fixStuckBooks:', err));
+  resumeActiveTorrents().catch(err => console.error('Error in startup resumeActiveTorrents:', err));
 }, 5000);
 
 // Local storage paths
@@ -851,6 +863,15 @@ setInterval(async () => {
       updated = true;
     }
     if (task.status === 'downloading' || task.status === 'connecting' || task.status === 'stalled') {
+      if ((task.retryCount || 0) >= MAX_RETRY_ATTEMPTS) {
+        task.status = 'failed';
+        task.downloadSpeed = '0 KB/s';
+        task.uploadSpeed = '0 KB/s';
+        task.eta = 'Failed';
+        updated = true;
+        updatedTasks.push(task);
+        continue;
+      }
       updated = true;
       let nextProgress = task.progress;
       let downloadSpeed = task.downloadSpeed;
@@ -945,6 +966,7 @@ setInterval(async () => {
               // Only restart if stalled for a significant amount of time (8 mins total or 3 mins in stalled status)
               if (now - (task.zeroSpeedSince || now) > 180000) {
                   const restarted = restartTorrent(task);
+                  status = task.status; // Correctly sync local status state
                   if (restarted) {
                       task.zeroSpeedSince = now;
                       db.logs.push({
@@ -966,9 +988,13 @@ setInterval(async () => {
            }
         }
       } else {
-        // Torrent is in downloading status but not active in client -> add it
-        console.log(`Adding missing torrent: ${task.name}`);
-        addTorrentToClient(task);
+        // Torrent is in downloading status but not active in client -> add it securely
+        try {
+          console.log(`Adding missing torrent from task manager: ${task.name}`);
+          addTorrentToClient(task);
+        } catch (e: any) {
+          console.error(`[WEBTOR] Safety catch: Failed to register missing torrent ${task.name}:`, e.message || e);
+        }
       }
 
       if (!task.magnetLink?.startsWith('magnet:')) {
@@ -1142,7 +1168,7 @@ setInterval(async () => {
     db.torrentTasks = updatedTasks;
     saveDB(db);
   }
-}, 1500);
+}, 5000);
 
 // API Endpoints for Bookrr
 
@@ -2184,7 +2210,6 @@ app.get('/api/files/:name', (req, res) => {
             if (isAudio) contentType = 'audio/mpeg';
             else if (isPdf) contentType = 'application/pdf';
             else if (isImage) contentType = `image/${lowerFileName.split('.').pop()?.replace('jpg', 'jpeg')}`;
-            else if (lowerFileName.endsWith('.mobi')) contentType = 'application/x-mobipocket-ebook';
             else contentType = 'application/epub+zip';
             
             res.setHeader('Content-Type', contentType);
@@ -2245,7 +2270,6 @@ app.get('/api/files/:name', (req, res) => {
             if (isAudio) contentType = 'audio/mpeg';
             else if (isPdf) contentType = 'application/pdf';
             else if (isImage) contentType = `image/${lowerFileName.split('.').pop()?.replace('jpg', 'jpeg')}`;
-            else if (lowerFileName.endsWith('.mobi')) contentType = 'application/x-mobipocket-ebook';
             else contentType = 'application/epub+zip';
 
             res.setHeader('Content-Type', contentType);
@@ -2384,6 +2408,56 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
         console.error('Upload processing failed:', err);
         res.status(500).json({ error: 'Failed to process uploaded file' });
     }
+});
+
+// Explicit routes for PWA files to guarantee correct MIME types and headers for scanners (e.g. PWABuilder)
+app.get(['/pwabuilder-sw.js', '/sw.js', '/service-worker.js'], (req, res) => {
+    const possiblePaths = [
+        path.join(process.cwd(), 'dist', 'pwabuilder-sw.js'),
+        path.join(process.cwd(), 'public', 'pwabuilder-sw.js')
+    ];
+    const filePath = possiblePaths.find(p => fs.existsSync(p)) || possiblePaths[1];
+    res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+    res.setHeader('Service-Worker-Allowed', '/');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.sendFile(filePath);
+});
+
+app.get('/manifest.json', (req, res) => {
+    const possiblePaths = [
+        path.join(process.cwd(), 'dist', 'manifest.json'),
+        path.join(process.cwd(), 'public', 'manifest.json')
+    ];
+    const filePath = possiblePaths.find(p => fs.existsSync(p)) || possiblePaths[1];
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.sendFile(filePath);
+});
+
+app.get(['/icon-192.png', '/icon-512.png'], (req, res) => {
+    const iconName = req.path.split('/').pop() || 'icon-512.png';
+    const possiblePaths = [
+        path.join(process.cwd(), 'dist', iconName),
+        path.join(process.cwd(), 'public', iconName)
+    ];
+    const filePath = possiblePaths.find(p => fs.existsSync(p)) || possiblePaths[1];
+    res.setHeader('Content-Type', 'image/png');
+    res.sendFile(filePath);
+});
+
+app.get(['/icon.svg', '/icon-maskable.svg'], (req, res) => {
+    const iconName = req.path.split('/').pop() || 'icon.svg';
+    const possiblePaths = [
+        path.join(process.cwd(), 'dist', iconName),
+        path.join(process.cwd(), 'public', iconName)
+    ];
+    const filePath = possiblePaths.find(p => fs.existsSync(p)) || possiblePaths[1];
+    res.setHeader('Content-Type', 'image/svg+xml');
+    res.sendFile(filePath);
 });
 
 // Setup dev server with Vite middleware or express static bundle

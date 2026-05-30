@@ -219,21 +219,19 @@ export default function EbookReader({ book, onClose, onUpdateProgress }: EbookRe
   const [localFileContent, setLocalFileContent] = useState<ArrayBuffer | null>(null);
   const [isOfflineChecked, setIsOfflineChecked] = useState(false);
 
-  const fileUrl = book.fileUrl || '';
-  const displayUrl = localBlobUrl || fileUrl;
+  const displayUrl = localBlobUrl || book.fileUrl || '';
   const chapters = (book.chapters as EbookChapter[]) || [];
   const hasRealFile = !!displayUrl;
-  const isPdf = fileUrl.toLowerCase().endsWith('.pdf');
-  const isTxt = fileUrl.toLowerCase().endsWith('.txt');
-  const isMobi = fileUrl.toLowerCase().endsWith('.mobi');
-  const isUnsupportedEbook = fileUrl.toLowerCase().endsWith('.azw3') || fileUrl.toLowerCase().endsWith('.djvu') || isMobi;
-  const isEpub = fileUrl.toLowerCase().endsWith('.epub') || (book.type === 'ebook' && !isPdf && !isTxt && !isUnsupportedEbook && !isMobi);
+  const isPdf = displayUrl.toLowerCase().endsWith('.pdf');
+  const isTxt = displayUrl.toLowerCase().endsWith('.txt');
+  const isUnsupportedEbook = displayUrl.toLowerCase().endsWith('.mobi') || displayUrl.toLowerCase().endsWith('.azw3') || displayUrl.toLowerCase().endsWith('.djvu');
+  const isEpub = displayUrl.toLowerCase().endsWith('.epub') || (book.type === 'ebook' && !isPdf && !isTxt && !isUnsupportedEbook);
   
   // With react-reader, EPUBs never fail to render client-side even if backend extraction failed
-  const extractionFailed = !isEpub && !isPdf && !isTxt && !isMobi && !isUnsupportedEbook && hasRealFile && chapters.length === 0;
+  const extractionFailed = !isEpub && !isPdf && !isUnsupportedEbook && hasRealFile && chapters.length === 0;
   
   // Immersive view logic: only show native view (iframe) for non-epub or if explicitly desired
-  const isNativeView = (hasRealFile && chapters.length === 0 && !isEpub && !isUnsupportedEbook && !isMobi) || isPdf;
+  const isNativeView = (hasRealFile && chapters.length === 0 && !isEpub && !isUnsupportedEbook) || isPdf;
 
   useEffect(() => {
     console.log("EbookReader rendering state:", { 

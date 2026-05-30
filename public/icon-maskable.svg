@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <!-- Beautiful, vibrant gradient for the book pages and highlights -->
+    <linearGradient id="book-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#818cf8" />
+      <stop offset="50%" stop-color="#4f46e5" />
+      <stop offset="100%" stop-color="#06b6d4" />
+    </linearGradient>
+    <linearGradient id="bg-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e1b4b" />
+      <stop offset="100%" stop-color="#0f172a" />
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000000" flood-opacity="0.5"/>
+    </filter>
+  </defs>
+
+  <!-- Solid background extending to edges for maskable compatibility -->
+  <rect width="100%" height="100%" fill="url(#bg-grad)" />
+
+  <!-- Padded branding graphics container scaled 0.8x to ensure full safety within any cropping shape -->
+  <g transform="translate(51, 51) scale(0.8)">
+    <circle cx="256" cy="256" r="220" fill="none" stroke="url(#book-grad)" stroke-width="4" stroke-opacity="0.15" />
+
+    <g filter="url(#shadow)" transform="translate(10, 0)">
+      <path d="M 246,150 C 190,150 140,180 90,180 L 90,360 C 140,360 190,330 246,330 Z" fill="#ffffff" fill-opacity="0.05" />
+      <path d="M 266,150 C 322,150 372,180 422,180 L 422,360 C 372,360 322,330 266,330 Z" fill="#ffffff" fill-opacity="0.05" />
+
+      <path d="M 246,165 C 195,165 155,190 105,190 L 105,340 C 155,340 195,315 246,315 Z" fill="url(#book-grad)" />
+      <path d="M 266,165 C 317,165 357,190 407,190 L 407,340 C 357,340 317,315 266,315 Z" fill="url(#book-grad)" />
+
+      <path d="M 246,175 C 200,175 165,198 120,198 L 120,332 C 165,332 200,305 246,305 Z" fill="#ffffff" fill-opacity="0.9" />
+      <path d="M 266,175 C 312,175 347,198 392,198 L 392,332 C 347,332 312,305 266,305 Z" fill="#ffffff" fill-opacity="0.95" />
+
+      <rect x="249" y="155" width="14" height="175" rx="7" fill="#1e1b4b" opacity="0.8" />
+      <rect x="254" y="160" width="4" height="165" rx="2" fill="url(#book-grad)" />
+
+      <!-- Soundwave lines -->
+      <rect x="180" y="220" width="6" height="40" rx="3" fill="#1e1d2c" />
+      <rect x="180" y="220" width="6" height="40" rx="3" fill="url(#book-grad)" opacity="0.75" />
+      <rect x="195" y="205" width="6" height="70" rx="3" fill="#1e1d2c" />
+      <rect x="195" y="205" width="6" height="70" rx="3" fill="url(#book-grad)" opacity="0.8" />
+      <rect x="210" y="230" width="6" height="30" rx="3" fill="#1e1d2c" />
+      <rect x="296" y="230" width="6" height="30" rx="3" fill="#1e1d2c" />
+      <rect x="311" y="205" width="6" height="70" rx="3" fill="#1e1d2c" />
+      <rect x="311" y="205" width="6" height="70" rx="3" fill="url(#book-grad)" opacity="0.85" />
+      <rect x="326" y="220" width="6" height="40" rx="3" fill="#1e1d2c" />
+      <rect x="326" y="220" width="6" height="40" rx="3" fill="url(#book-grad)" opacity="0.75" />
+    </g>
+
+    <!-- Headphones element -->
+    <path d="M 120,290 A 160,160 0 0,1 392,290" fill="none" stroke="url(#book-grad)" stroke-width="12" stroke-linecap="round" filter="url(#shadow)" />
+    <rect x="104" y="260" width="22" height="60" rx="11" fill="url(#book-grad)" filter="url(#shadow)" />
+    <rect x="386" y="260" width="22" height="60" rx="11" fill="url(#book-grad)" filter="url(#shadow)" />
+    <rect x="114" y="268" width="8" height="44" rx="4" fill="#ffffff" fill-opacity="0.3" />
+    <rect x="390" y="268" width="8" height="44" rx="4" fill="#ffffff" fill-opacity="0.3" />
+  </g>
+</svg>
