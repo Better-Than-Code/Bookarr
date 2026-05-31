@@ -19,11 +19,26 @@ export interface WatchFolderFile {
 
 export async function batchOrganizeLocalBooks(
   books: Book[],
-  getDirectoryHandle: (dirName: "ebooks" | "audiobooks") => Promise<FileSystemDirectoryHandle | null>,
-  verifyDirectoryPermission: (handle: FileSystemDirectoryHandle, read: boolean, write: boolean) => Promise<boolean>,
-  saveOfflineFile: (bookId: string, name: string, blob: Blob, filePath?: string) => Promise<void>,
-  saveFileHandle: (bookId: string, handle: FileSystemFileHandle, originalPath?: string) => Promise<void>,
-  onProgress?: (progress: number, total: number, message: string) => void
+  getDirectoryHandle: (
+    dirName: "ebooks" | "audiobooks",
+  ) => Promise<FileSystemDirectoryHandle | null>,
+  verifyDirectoryPermission: (
+    handle: FileSystemDirectoryHandle,
+    read: boolean,
+    write: boolean,
+  ) => Promise<boolean>,
+  saveOfflineFile: (
+    bookId: string,
+    name: string,
+    blob: Blob,
+    filePath?: string,
+  ) => Promise<void>,
+  saveFileHandle: (
+    bookId: string,
+    handle: FileSystemFileHandle,
+    originalPath?: string,
+  ) => Promise<void>,
+  onProgress?: (progress: number, total: number, message: string) => void,
 ): Promise<{ success: number; failed: number; errors: string[] }> {
   let success = 0;
   let failed = 0;
@@ -33,14 +48,20 @@ export async function batchOrganizeLocalBooks(
     const book = books[i];
     try {
       if (onProgress) {
-        onProgress(i, books.length, `Organizing "${book.title}"... (${i + 1}/${books.length})`);
+        onProgress(
+          i,
+          books.length,
+          `Organizing "${book.title}"... (${i + 1}/${books.length})`,
+        );
       }
 
       const destType = book.type === "audiobook" ? "audiobooks" : "ebooks";
       const handle = await getDirectoryHandle(destType);
 
       if (!handle) {
-        throw new Error(`Organized destination directory for ${book.type} is unconfigured.`);
+        throw new Error(
+          `Organized destination directory for ${book.type} is unconfigured.`,
+        );
       }
 
       const hasPerm = await verifyDirectoryPermission(handle, true, true);
@@ -49,41 +70,125 @@ export async function batchOrganizeLocalBooks(
       }
 
       if (!book.fileUrl) {
-        throw new Error("File URL is not available on the server. Make sure download has finished.");
+        throw new Error(
+          "File URL is not available on the server. Make sure download has finished.",
+        );
       }
-
-      // Fetch the file from server
-      const fileRes = await fetch(book.fileUrl);
-      if (!fileRes.ok) {
-        throw new Error(`Server returned HTTP ${fileRes.status}`);
-      }
-      const blob = await fileRes.blob();
 
       const authorFolder = sanitizePathName(book.author);
       const bookFolder = sanitizePathName(book.title);
-      const ext = book.filePath ? book.filePath.split(".").pop() || "epub" : "epub";
-      const finalFileName = `${bookFolder} - ${authorFolder}.${ext}`;
 
       // Create folders as needed
-      const authorDirHandle = await handle.getDirectoryHandle(authorFolder, { create: true });
-      const bookDirHandle = await authorDirHandle.getDirectoryHandle(bookFolder, { create: true });
+      const authorDirHandle = await handle.getDirectoryHandle(authorFolder, {
+        create: true,
+      });
+      const bookDirHandle = await authorDirHandle.getDirectoryHandle(
+        bookFolder,
+        { create: true },
+      );
 
-      // Write file contents
-      const fileHandle = await bookDirHandle.getFileHandle(finalFileName, { create: true });
-      const writable = await fileHandle.createWritable();
-      await writable.write(blob);
-      await writable.close();
+      let relativeDest = "";
 
-      // Save offline file and handle locally
-      const relativeDest = `${book.type === "audiobook" ? "Audiobooks" : "Ebooks"}/${authorFolder}/${bookFolder}/${finalFileName}`;
-      await saveOfflineFile(book.id, finalFileName, blob, relativeDest);
-      await saveFileHandle(book.id, fileHandle, relativeDest);
+      if (
+        book.type === "audiobook" &&
+        book.chapters &&
+        book.chapters.length > 1 &&
+        book.chapters.some((c) => c.fileUrl)
+      ) {
+        // Multi-chapter audiobook
+        for (let j = 0; j < book.chapters.length; j++) {
+          const chap = book.chapters[j] as any;
+          if (!chap.fileUrl) continue;
+
+          if (onProgress) {
+            onProgress(
+              i,
+              books.length,
+              `Organizing "${book.title}"... Part ${j + 1}/${book.chapters.length}`,
+            );
+          }
+
+          const chapRes = await fetch(chap.fileUrl);
+          if (!chapRes.ok)
+            throw new Error(
+              `Server returned HTTP ${chapRes.status} for part ${j + 1}`,
+            );
+          const chapBlob = await chapRes.blob();
+
+          let cExt = chap.fileUrl.split(".").pop() || "mp3";
+          cExt = cExt.split("?")[0];
+          let chapName =
+            chap.title.replace(/[\\/:*?"<>|]/g, "-").trim() || `Part ${j + 1}`;
+          if (
+            !chapName.toLowerCase().endsWith(".mp3") &&
+            !chapName.toLowerCase().endsWith(".m4b")
+          ) {
+            chapName = `${chapName}.${cExt}`;
+          }
+
+          const fileHandle = await bookDirHandle.getFileHandle(chapName, {
+            create: true,
+          });
+          const writable = await fileHandle.createWritable();
+          await writable.write(chapBlob);
+          await writable.close();
+        }
+
+        relativeDest = `Audiobooks/${authorFolder}/${bookFolder}`;
+        const firstPart = book.chapters[0] as any;
+        const firstExt =
+          firstPart.fileUrl?.split(".").pop()?.split("?")[0] || "mp3";
+        let firstFileName =
+          firstPart.title.replace(/[\\/:*?"<>|]/g, "-").trim() || "Part 1";
+        if (
+          !firstFileName.toLowerCase().endsWith(".mp3") &&
+          !firstFileName.toLowerCase().endsWith(".m4b")
+        ) {
+          firstFileName = `${firstFileName}.${firstExt}`;
+        }
+
+        const firstFileHandle =
+          await bookDirHandle.getFileHandle(firstFileName);
+        await saveOfflineFile(
+          book.id,
+          firstFileName,
+          new Blob([]),
+          relativeDest,
+        ); // Save dummy blob, path holds context
+        await saveFileHandle(book.id, firstFileHandle, relativeDest);
+      } else {
+        // Single file book
+        const fileRes = await fetch(book.fileUrl);
+        if (!fileRes.ok)
+          throw new Error(`Server returned HTTP ${fileRes.status}`);
+        const blob = await fileRes.blob();
+
+        const ext = book.filePath
+          ? book.filePath.split(".").pop() || "epub"
+          : "epub";
+        const finalFileName = `${bookFolder} - ${authorFolder}.${ext}`;
+
+        const fileHandle = await bookDirHandle.getFileHandle(finalFileName, {
+          create: true,
+        });
+        const writable = await fileHandle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+
+        relativeDest = `${destType === "audiobooks" ? "Audiobooks" : "Ebooks"}/${authorFolder}/${bookFolder}/${finalFileName}`;
+        await saveOfflineFile(book.id, finalFileName, blob, relativeDest);
+        await saveFileHandle(book.id, fileHandle, relativeDest);
+      }
 
       // Sync status with server
       const updateRes = await fetch(`/api/books/${book.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isDownloaded: true, filePath: relativeDest }),
+        body: JSON.stringify({
+          isDownloaded: true,
+          filePath: relativeDest,
+          status: "organized",
+        }),
       });
 
       if (!updateRes.ok) {
@@ -331,7 +436,13 @@ export async function reorganizeFile(
     // Get file snapshot and data buffer safely (recovering from state modifications)
     const { fileObj: file, buffer } = await readFileBufferSafely(oldHandle);
     const ext = file.name.split(".").pop()?.toLowerCase() || "";
-    const finalFileName = `${bookFolder} - ${authorFolder}.${ext}`;
+    const isAudio = ["mp3", "m4b", "aac", "flac", "wav", "ogg", "wma"].includes(ext);
+    
+    // For audiobooks, keep original filename so tracks don't overwrite each other
+    let finalFileName = file.name;
+    if (!isAudio) {
+      finalFileName = `${bookFolder} - ${authorFolder}.${ext}`;
+    }
 
     // 1. Traverse and create structure (Author folder -> Book folder)
     const authorHandle = await destDir.getDirectoryHandle(authorFolder, {
@@ -395,11 +506,16 @@ export async function organizeSingleFile(
     const authorFolder = sanitizePathName(book.author);
     const bookFolder = sanitizePathName(book.title);
 
-    // Create organised file name: "Title - Author.ext" or "cover.ext"
-    const finalFileName =
-      file.type === "cover"
-        ? `cover.${file.extension}`
-        : `${bookFolder} - ${authorFolder}.${file.extension}`;
+    // Create organised file name
+    const isAudio = ["mp3", "m4b", "aac", "flac", "wav", "ogg", "wma"].includes(file.extension.toLowerCase());
+    
+    let finalFileName = file.name; // Keep Original Track Name for audiobooks to avoid collision
+    
+    if (file.type === "cover") {
+      finalFileName = `cover.${file.extension}`;
+    } else if (!isAudio) {
+      finalFileName = `${bookFolder} - ${authorFolder}.${file.extension}`;
+    }
 
     // 1. Traverse and create structure (Author folder -> Book folder)
     const authorHandle = await destDir.getDirectoryHandle(authorFolder, {
@@ -543,6 +659,8 @@ export async function autoRelinkLibrary(
             "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?q=80&w=200&auto=format&fit=crop",
           description: `Automatically imported from local library path: ${file.path}`,
           genres: ["Uncategorized"],
+          isDownloaded: true,
+          status: "organized",
         };
 
         const res = await fetch("/api/books", {
@@ -552,8 +670,7 @@ export async function autoRelinkLibrary(
         });
 
         if (res.ok) {
-          const savedBooks = await res.json();
-          const addedBook = savedBooks[savedBooks.length - 1];
+          const addedBook = await res.json();
 
           if (addedBook && addedBook.id) {
             const authorFolder = sanitizePathName(addedBook.author);
@@ -569,9 +686,9 @@ export async function autoRelinkLibrary(
       }
     } else if (!file.autoMappedBook && file.type === "audiobook") {
       const pathParts = file.path.split("/");
-      // Map to directory name, default to "root" if in root folder
+      // Map to directory name, if in root folder, make each file unique to avoid grouping unrelated loose files
       const dirName =
-        pathParts.length > 1 ? pathParts.slice(0, -1).join("/") : "root";
+        pathParts.length > 1 ? pathParts.slice(0, -1).join("/") : `root_${file.name}`;
       if (!unmappedAudiobooks[dirName]) {
         unmappedAudiobooks[dirName] = [];
       }
@@ -586,13 +703,13 @@ export async function autoRelinkLibrary(
 
     try {
       let titleGuess =
-        dir === "root"
+        dir.startsWith("root_")
           ? firstFile.name.replace(/\.[^/.]+$/, "")
           : dir.split("/").pop() || "Unknown Title";
       let authorGuess = "Unknown Author (Scanned Local)";
 
       const pathParts = firstFile.path.split("/");
-      if (dir !== "root") {
+      if (!dir.startsWith("root_")) {
         if (pathParts.length >= 3) {
           authorGuess = pathParts[0];
           titleGuess = pathParts[1];
@@ -624,6 +741,8 @@ export async function autoRelinkLibrary(
         description: `Automatically imported audiobook from local library`,
         genres: ["Uncategorized"],
         chapters: files.length > 1 ? mappedChapters : undefined,
+        isDownloaded: true,
+        status: "organized",
       };
 
       const res = await fetch("/api/books", {
@@ -633,8 +752,7 @@ export async function autoRelinkLibrary(
       });
 
       if (res.ok) {
-        const savedBooks = await res.json();
-        const addedBook = savedBooks[savedBooks.length - 1];
+        const addedBook = await res.json();
 
         if (addedBook && addedBook.id) {
           const authorFolder = sanitizePathName(addedBook.author);

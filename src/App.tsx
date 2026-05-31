@@ -83,58 +83,6 @@ export default function App() {
   }>({});
   const syncInProgressRef = React.useRef<{ [bookId: string]: boolean }>({});
 
-  const refreshOfflineBooks = useCallback(async () => {
-    try {
-      const map = await getOfflineBooksMap();
-      setOfflineBooksMap(map);
-
-      if (books.length > 0) {
-        const ebooksHandle = await getDirectoryHandle("ebooks");
-        const audiobooksHandle = await getDirectoryHandle("audiobooks");
-
-        let hasEbookPerms = false;
-        let hasAudioPerms = false;
-
-        if (ebooksHandle)
-          hasEbookPerms = await verifyDirectoryPermission(
-            ebooksHandle,
-            true,
-            false,
-          );
-        if (audiobooksHandle)
-          hasAudioPerms = await verifyDirectoryPermission(
-            audiobooksHandle,
-            true,
-            false,
-          );
-
-        if (hasEbookPerms && hasAudioPerms) {
-          const restored = await autoRelinkLibrary(
-            books,
-            ebooksHandle!,
-            audiobooksHandle!,
-            saveFileHandle,
-            saveOfflineFile,
-            map,
-          );
-          if (restored > 0) {
-            console.log(
-              `[AUTO-LINK] Automatically restored ${restored} missing directory file handles.`,
-            );
-            const newMap = await getOfflineBooksMap();
-            setOfflineBooksMap(newMap);
-          }
-        }
-      }
-    } catch (e) {
-      console.error("Failed to load local offline map in background", e);
-    }
-  }, [books]);
-
-  useEffect(() => {
-    refreshOfflineBooks();
-  }, [books, refreshOfflineBooks]);
-
   // 1. Initial mounting API loaders
   const loadLibraryData = useCallback(async () => {
     try {
@@ -147,6 +95,57 @@ export default function App() {
       console.error("Failed to load library database", err);
     }
   }, []);
+
+  const refreshOfflineBooks = useCallback(async () => {
+    try {
+      const map = await getOfflineBooksMap();
+      setOfflineBooksMap(map);
+
+      const ebooksHandle = await getDirectoryHandle("ebooks");
+      const audiobooksHandle = await getDirectoryHandle("audiobooks");
+
+      let hasEbookPerms = false;
+      let hasAudioPerms = false;
+
+      if (ebooksHandle)
+        hasEbookPerms = await verifyDirectoryPermission(
+          ebooksHandle,
+          true,
+          false,
+        );
+      if (audiobooksHandle)
+        hasAudioPerms = await verifyDirectoryPermission(
+          audiobooksHandle,
+          true,
+          false,
+        );
+
+      if (hasEbookPerms || hasAudioPerms) {
+        const restored = await autoRelinkLibrary(
+          books,
+          ebooksHandle || ({} as FileSystemDirectoryHandle),
+          audiobooksHandle || ({} as FileSystemDirectoryHandle),
+          saveFileHandle,
+          saveOfflineFile,
+          map,
+        );
+        if (restored > 0) {
+          console.log(
+            `[AUTO-LINK] Automatically restored/imported ${restored} missing directory file handles.`,
+          );
+          const newMap = await getOfflineBooksMap();
+          setOfflineBooksMap(newMap);
+          loadLibraryData();
+        }
+      }
+    } catch (e) {
+      console.error("Failed to load local offline map in background", e);
+    }
+  }, [books, loadLibraryData]);
+
+  useEffect(() => {
+    refreshOfflineBooks();
+  }, [books, refreshOfflineBooks]);
 
   const loadSettingsAndLogs = useCallback(async () => {
     try {
@@ -190,9 +189,9 @@ export default function App() {
       console.log(
         `[Migration] Migrating model ${currentModelId} to high-quality Piper TTS`,
       );
-      localStorage.setItem("bookrr_tts_model_id", "piper/en_US-libritts-high");
-    } else if (!currentModelId) {
-      localStorage.setItem("bookrr_tts_model_id", "piper/en_US-libritts-high");
+      localStorage.setItem("bookrr_tts_model_id", "piper/en_US-libritts_r-medium");
+    } else if (!currentModelId || currentModelId === "piper/en_US-libritts-high") {
+      localStorage.setItem("bookrr_tts_model_id", "piper/en_US-libritts_r-medium");
     }
 
     const initApp = async () => {

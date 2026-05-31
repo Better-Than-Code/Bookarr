@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bookrr-cache-v1';
+const CACHE_NAME = 'bookrr-cache-v2';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -51,8 +51,14 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Avoid intercepting hot-reloading or local dev-server requests
-  if (event.request.url.includes('/@vite/') || event.request.url.includes('/node_modules/')) {
+  // Avoid intercepting hot-reloading, local dev-server requests, or large model files being handled by explicit TTS caching
+  if (
+    event.request.url.includes('/@vite/') || 
+    event.request.url.includes('/node_modules/') ||
+    event.request.url.includes('/models/') ||
+    event.request.url.endsWith('.onnx') ||
+    event.request.url.endsWith('.bin')
+  ) {
     return;
   }
 

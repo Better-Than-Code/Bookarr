@@ -1371,7 +1371,7 @@ export default function BookrrSettings({
             {/* Neural AI Settings */}
             <div className="bg-[#111] border border-[#222] rounded-2xl p-6 space-y-6">
               <div className="flex items-center gap-3 pb-4 border-b border-[#222]">
-                <Sparkles className="w-5 h-5 text-indigo-400" />
+                <Sparkles className="w-5 h-5 text-amber-400" />
                 <div>
                   <h3 className="font-sans font-bold text-sm text-neutral-100">
                     Speech & AI Experience
@@ -1386,7 +1386,7 @@ export default function BookrrSettings({
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-neutral-900 border border-white/5">
                   <div className="flex items-center gap-3">
                     <div
-                      className={`p-2 rounded-lg ${ttsState.engine === "neural" ? "bg-indigo-500/20 text-indigo-400" : "bg-amber-500/20 text-amber-500"}`}
+                      className={`p-2 rounded-lg ${ttsState.engine === "neural" ? "bg-amber-500/20 text-amber-400" : "bg-amber-500/20 text-amber-500"}`}
                     >
                       {ttsState.engine === "neural" ? (
                         <Zap size={18} />
@@ -1420,7 +1420,7 @@ export default function BookrrSettings({
                       onClick={() => setTtsEngine("neural")}
                       className={`px-3 py-1.5 text-[10px] font-bold rounded-lg transition-all flex items-center gap-1.5 ${
                         ttsState.engine === "neural"
-                          ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/10"
+                          ? "bg-amber-500 text-white shadow-lg shadow-amber-500/10"
                           : "text-neutral-500 hover:text-neutral-300"
                       }`}
                     >
@@ -1434,7 +1434,7 @@ export default function BookrrSettings({
                   <motion.div
                     initial={{ opacity: 0, y: 5 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="p-5 rounded-2xl bg-indigo-500/5 border border-indigo-500/20 space-y-4"
+                    className="p-5 rounded-2xl bg-amber-500/5 border border-amber-500/20 space-y-4"
                   >
                     <div className="flex items-center justify-between gap-4">
                       <div className="flex flex-col w-full">
@@ -1446,10 +1446,10 @@ export default function BookrrSettings({
                           value={selectedNeuralModel}
                           onChange={handleNeuralModelChange}
                           disabled={ttsState.neuralStatus === "loading"}
-                          className="w-full bg-black/40 border border-white/10 rounded-lg p-2 text-white text-[11px] font-medium appearance-none focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 mt-2"
+                          className="w-full bg-black/40 border border-white/10 rounded-lg p-2 text-white text-[11px] font-medium appearance-none focus:outline-none focus:ring-1 focus:ring-amber-500 disabled:opacity-50 mt-2"
                         >
-                          <option value="piper/en_US-libritts-high">
-                            US Voices (LibriTTS High)
+                          <option value="piper/en_US-libritts_r-medium">
+                            US Voices (LibriTTS R Medium)
                           </option>
                           <option value="piper/en_GB-vctk-medium">
                             UK Voices (VCTK Medium)
@@ -1470,7 +1470,7 @@ export default function BookrrSettings({
                             value={selectedSpeakerId}
                             onChange={handleSpeakerIdChange}
                             disabled={ttsState.neuralStatus === "loading"}
-                            className="w-full bg-black/40 border border-white/10 rounded-lg p-2 text-white text-[11px] font-medium appearance-none focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50"
+                            className="w-full bg-black/40 border border-white/10 rounded-lg p-2 text-white text-[11px] font-medium appearance-none focus:outline-none focus:ring-1 focus:ring-amber-500 disabled:opacity-50"
                           >
                             {selectedNeuralModel.includes("libritts")
                               ? US_VOICE_PRESETS.map((preset) => (
@@ -1495,7 +1495,7 @@ export default function BookrrSettings({
                           value={selectedBackend}
                           onChange={handleBackendChange}
                           disabled={ttsState.neuralStatus === "loading"}
-                          className="w-full bg-black/40 border border-white/10 rounded-lg p-2 text-white text-[11px] font-medium appearance-none focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 mt-2"
+                          className="w-full bg-black/40 border border-white/10 rounded-lg p-2 text-white text-[11px] font-medium appearance-none focus:outline-none focus:ring-1 focus:ring-amber-500 disabled:opacity-50 mt-2"
                         >
                           <option value="auto">Auto (Best Available)</option>
                           <option value="webgpu">WebGPU (GPU)</option>
@@ -1510,7 +1510,7 @@ export default function BookrrSettings({
 
                     <div className="flex items-center justify-between border-t border-white/5 pt-4">
                       <div className="flex items-center gap-2">
-                        <Activity size={14} className="text-indigo-400" />
+                        <Activity size={14} className="text-amber-400" />
                         <span className="text-[11px] font-bold text-neutral-300 uppercase tracking-wider">
                           Model Status
                         </span>
@@ -1520,7 +1520,7 @@ export default function BookrrSettings({
                           ttsState.neuralStatus === "ready"
                             ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
                             : ttsState.neuralStatus === "loading"
-                              ? "bg-indigo-500/10 text-indigo-400 border-indigo-500/20"
+                              ? "bg-amber-500/10 text-amber-400 border-amber-500/20"
                               : ttsState.neuralStatus === "error"
                                 ? "bg-rose-500/10 text-rose-400 border-rose-500/20"
                                 : "bg-neutral-800 text-neutral-500 border-neutral-700"
@@ -1538,7 +1538,7 @@ export default function BookrrSettings({
 
                     {ttsState.neuralStatus === "idle" && (
                       <div className="space-y-4">
-                        <p className="text-[10px] text-indigo-300/70 font-medium leading-tight">
+                        <p className="text-[10px] text-amber-300/70 font-medium leading-tight">
                           Using high-fidelity VITS on-device neural model.
                           Initial set up requires ~80-160MB download.
                         </p>
@@ -1555,7 +1555,7 @@ export default function BookrrSettings({
                               ? "bg-red-500 shadow-red-500/20 hover:bg-red-600"
                               : ttsState.neuralStatus === "loading"
                                 ? "bg-neutral-800 cursor-not-allowed opacity-50"
-                                : "bg-indigo-500 shadow-indigo-500/20 hover:bg-indigo-400"
+                                : "bg-amber-500 shadow-amber-500/20 hover:bg-amber-400"
                           }`}
                         >
                           {ttsState.neuralStatus === "error" ? (
@@ -1586,8 +1586,8 @@ export default function BookrrSettings({
                         <div className="flex items-center justify-between text-[10px]">
                           <span className="text-neutral-500 font-medium truncate max-w-[160px] flex items-center gap-1.5">
                             <span className="relative flex h-2 w-2">
-                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-                              <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
                             </span>
                             {ttsState.neuralStatusMessage || "Initializing..."}
                           </span>
@@ -1597,7 +1597,7 @@ export default function BookrrSettings({
                                 {ttsState.neuralDownloadSpeed}
                               </span>
                             )}
-                            <span className="text-indigo-400 font-bold whitespace-nowrap min-w-[30px] text-right drop-shadow-[0_0_8px_rgba(99,102,241,0.4)]">
+                            <span className="text-amber-400 font-bold whitespace-nowrap min-w-[30px] text-right drop-shadow-[0_0_8px_rgba(245,158,11,0.4)]">
                               {ttsState.neuralDownloadIsIndeterminate
                                 ? ""
                                 : `${Math.round(ttsState.neuralDownloadProgress)}%`}
@@ -1607,7 +1607,7 @@ export default function BookrrSettings({
                         <div className="flex items-center gap-3">
                           <div className="flex-1 h-2 bg-neutral-950 rounded-full overflow-hidden border border-white/5 relative shadow-inner">
                             <motion.div
-                              className="h-full bg-gradient-to-r from-indigo-600 to-indigo-400 shadow-[0_0_12px_rgba(99,102,241,0.6)]"
+                              className="h-full bg-gradient-to-r from-amber-600 to-amber-400 shadow-[0_0_12px_rgba(245,158,11,0.6)]"
                               initial={{ width: 0 }}
                               animate={
                                 ttsState.neuralDownloadIsIndeterminate
@@ -1644,7 +1644,7 @@ export default function BookrrSettings({
                             </button>
                             <button
                               onClick={() => resetNeuralEngine()}
-                              className="p-1 rounded-md bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 transition-colors"
+                              className="p-1 rounded-md bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 transition-colors"
                               title="Force Reset Worker"
                             >
                               <RefreshCw size={12} />

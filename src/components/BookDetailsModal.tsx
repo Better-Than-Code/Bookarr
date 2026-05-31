@@ -39,7 +39,10 @@ import {
   saveFileHandle,
   saveOfflineFile,
 } from "../services/LocalFileService";
-import { sanitizePathName } from "../services/LocalOrganizerService";
+import {
+  sanitizePathName,
+  batchOrganizeLocalBooks,
+} from "../services/LocalOrganizerService";
 
 export default function BookDetailsModal({
   book,
@@ -146,94 +149,26 @@ export default function BookDetailsModal({
   };
 
   const handleOrganize = async () => {
-    const destType = book.type === "audiobook" ? "audiobooks" : "ebooks";
     try {
-      setOrganizingStatus("Checking local storage configuration...");
-      const handle = await getDirectoryHandle(destType);
-
-      if (!handle) {
-        setOrganizingStatus(null);
-        alert(
-          `The organized destination directory for ${book.type === "audiobook" ? "Audiobooks" : "Ebooks"} is unconfigured on this device. Please connect it in Settings folder selection.`,
-        );
-        return;
-      }
-
-      const hasPerm = await verifyDirectoryPermission(handle, true, true);
-      if (!hasPerm) {
-        setOrganizingStatus(null);
-        alert(
-          `Missing write permission to write into your device's organized ${destType} folder.`,
-        );
-        return;
-      }
-
-      setOrganizingStatus("Fetching file from server staging area...");
-      if (!book.fileUrl) {
-        setOrganizingStatus(null);
-        alert(
-          "File URL is not available on the server. Make sure download has finished.",
-        );
-        return;
-      }
-
-      // Fetch the file from server
-      const fileRes = await fetch(book.fileUrl);
-      if (!fileRes.ok) {
-        throw new Error(`Server returned HTTP ${fileRes.status}`);
-      }
-      const blob = await fileRes.blob();
-
-      setOrganizingStatus("Writing organized file onto your device storage...");
-      const authorFolder = sanitizePathName(book.author);
-      const bookFolder = sanitizePathName(book.title);
-      const ext = book.filePath
-        ? book.filePath.split(".").pop() || "epub"
-        : "epub";
-      const finalFileName = `${bookFolder} - ${authorFolder}.${ext}`;
-
-      // Create folders as needed
-      const authorDirHandle = await handle.getDirectoryHandle(authorFolder, {
-        create: true,
-      });
-      const bookDirHandle = await authorDirHandle.getDirectoryHandle(
-        bookFolder,
-        { create: true },
+      setOrganizingStatus("Starting organization process...");
+      const { success, failed, errors } = await batchOrganizeLocalBooks(
+        [book],
+        getDirectoryHandle,
+        verifyDirectoryPermission,
+        saveOfflineFile,
+        saveFileHandle,
+        (_, __, message) => {
+          setOrganizingStatus(message);
+        },
       );
-
-      // Write file contents
-      const fileHandle = await bookDirHandle.getFileHandle(finalFileName, {
-        create: true,
-      });
-      const writable = await fileHandle.createWritable();
-      await writable.write(blob);
-      await writable.close();
-
-      setOrganizingStatus("Registering file inside IndexedDB database...");
-
-      // Save offline file and handle locally
-      const relativeDest = `${book.type === "audiobook" ? "Audiobooks" : "Ebooks"}/${authorFolder}/${bookFolder}/${finalFileName}`;
-      await saveOfflineFile(book.id, finalFileName, blob, relativeDest);
-      await saveFileHandle(book.id, fileHandle, relativeDest);
-
-      setOrganizingStatus("Updating library database...");
-      // Sync status with server
-      const updateRes = await fetch(`/api/books/${book.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isDownloaded: true, filePath: relativeDest }),
-      });
-
-      if (!updateRes.ok) {
-        const errText = await updateRes.text();
-        throw new Error(`Server failed to update book status: ${errText}`);
-      }
 
       setOrganizingStatus(null);
-      alert(
-        `Successfully organized "${book.title}" on your device storage!\nLocation: Bookrr > ${destType} > ${authorFolder} > ${bookFolder}`,
-      );
-      onUpdateBook();
+      if (success > 0) {
+        alert(`Successfully organized "${book.title}" on your device storage!`);
+        onUpdateBook();
+      } else {
+        alert("Failed to organize file locally:\n" + errors.join("\n"));
+      }
     } catch (e: any) {
       console.error("Failed to organize file locally:", e);
       setOrganizingStatus(null);

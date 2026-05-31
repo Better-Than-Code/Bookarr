@@ -292,6 +292,13 @@ export const ReadAloudProvider = ({ children }: { children: ReactNode }) => {
             onAudioErrorCallbackRef.current[reqId]();
             delete onAudioErrorCallbackRef.current[reqId];
           }
+          setState((prev) => ({
+            ...prev,
+            isBuffering: false,
+            neuralStatus: "error",
+            neuralStatusMessage: message,
+            neuralDownloadSpeed: "",
+          }));
         } else if (type === "ready") {
           setState((prev) => ({
             ...prev,
@@ -331,20 +338,6 @@ export const ReadAloudProvider = ({ children }: { children: ReactNode }) => {
             neuralDownloadSpeed: e.data.speed || prev.neuralDownloadSpeed,
             neuralStatusMessage: `Downloading... (Total: ${e.data.totalLoadedMB}/${e.data.totalSizeMB}MB)`,
             neuralDownloadFileProgressList: e.data.fileProgressList || [],
-          }));
-        } else if (type === "error") {
-          console.error("[TTS Context] Neural TTS Error:", message);
-          // If it was for a specific reqId, advance to prevent hanging
-          if (reqId && onAudioErrorCallbackRef.current[reqId]) {
-            onAudioErrorCallbackRef.current[reqId]();
-            delete onAudioErrorCallbackRef.current[reqId];
-          }
-          setState((prev) => ({
-            ...prev,
-            isBuffering: false,
-            neuralStatus: "error",
-            neuralStatusMessage: message,
-            neuralDownloadSpeed: "",
           }));
         }
       };

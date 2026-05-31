@@ -2243,8 +2243,31 @@ app.get("/api/books", (req, res) => {
 
 app.post("/api/books", (req, res) => {
   const db = loadDB();
+  
+  // Check for duplicate based on title, author, and type
+  const existing = db.books.find(
+    (b: Book) =>
+      b.title?.toLowerCase() === req.body.title?.toLowerCase() &&
+      b.author?.toLowerCase() === req.body.author?.toLowerCase() &&
+      b.type === req.body.type
+  );
+  
+  if (existing) {
+    // If it exists, update it if needed, or just return it to avoid duplication
+    // We update filePath and isDownloaded if the new request has them
+    let updated = false;
+    if (req.body.isDownloaded && !existing.isDownloaded) {
+      existing.isDownloaded = true;
+      existing.status = req.body.status || "organized";
+      existing.filePath = req.body.filePath;
+      updated = true;
+    }
+    if (updated) saveDB(db);
+    return res.json(existing);
+  }
+
   const book: Book = {
-    id: `book-${Date.now()}`,
+    id: `book-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
     ...req.body,
     progress: req.body.progress || 0,
     currentTime: req.body.currentTime || 0,

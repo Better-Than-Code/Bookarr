@@ -15,7 +15,7 @@ let initPromise = null;
 
 async function initSynthesizer(
   forceBypass = false,
-  customModelId = "piper/en_US-libritts-high",
+  customModelId = "piper/en_US-libritts_r-medium",
   customBackend = "auto"
 ) {
   if (synthesizer && !forceBypass && customModelId === lastLoadedModelId) return synthesizer;
@@ -35,8 +35,8 @@ async function initSynthesizer(
       // Normalize model ID - we only support Piper now
       let modelId = customModelId;
       if (!modelId.startsWith("piper/")) {
-          console.warn(`[Worker] Unsupported model ${modelId} passed. Defaulting to piper/en_US-libritts-high.`);
-          modelId = "piper/en_US-libritts-high";
+          console.warn(`[Worker] Unsupported model ${modelId} passed. Defaulting to piper/en_US-libritts_r-medium.`);
+          modelId = "piper/en_US-libritts_r-medium";
       }
 
       const p = await loadPiper();

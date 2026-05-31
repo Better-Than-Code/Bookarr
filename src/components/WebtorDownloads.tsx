@@ -402,9 +402,8 @@ export default function WebtorDownloads({
           });
 
           if (res.ok) {
-            const updatedBooks = await res.json();
-            const addedBook = updatedBooks[updatedBooks.length - 1];
-            if (addedBook) {
+            const addedBook = await res.json();
+            if (addedBook && addedBook.id) {
               targetBookId = addedBook.id;
             }
           }
